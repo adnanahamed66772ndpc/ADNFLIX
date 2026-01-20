@@ -1,0 +1,26 @@
+# Render Blueprint - ADNFLIX
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend API Service
+  - type: web
+    name: adnflix-api
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_SSL
+        value: true
+      # These should be set manually in Render Dashboard for security:
+      # - DB_HOST
+      # - DB_PORT
+      # - DB_USER
+      # - DB_PASSWORD
+      # - DB_NAME
+      # - JWT_SECRET
+      # - SESSION_SECRET
+      # - CORS_ORIGINS
