@@ -167,22 +167,47 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/config', configRoutes);
 
-// Serve static frontend files in production (BEFORE error handlers)
-if (isProduction) {
+// Serve static frontend files in production (only if SERVE_FRONTEND=true)
+// For API-only deployment (Render), set SERVE_FRONTEND=false or leave unset
+if (isProduction && process.env.SERVE_FRONTEND === 'true') {
   const frontendPath = join(__dirname, '../../frontend/dist');
-  app.use(express.static(frontendPath, {
-    maxAge: '1d', // Cache static assets
-    etag: true
-  }));
+  const fs = await import('fs');
   
-  // SPA fallback - serve index.html for all non-API routes
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
-      return next();
-    }
-    res.sendFile(join(frontendPath, 'index.html'));
-  });
+  // Only serve if frontend dist exists
+  if (fs.existsSync(join(frontendPath, 'index.html'))) {
+    app.use(express.static(frontendPath, {
+      maxAge: '1d', // Cache static assets
+      etag: true
+    }));
+    
+    // SPA fallback - serve index.html for all non-API routes
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+        return next();
+      }
+      res.sendFile(join(frontendPath, 'index.html'));
+    });
+    console.log('📁 Serving frontend static files');
+  }
 }
+
+// Root route - API info
+app.get('/', (req, res) => {
+  res.json({
+    name: 'ADNFLIX API',
+    version: '1.0.0',
+    status: 'running',
+    docs: '/health',
+    endpoints: {
+      auth: '/api/auth',
+      titles: '/api/titles',
+      categories: '/api/categories',
+      videos: '/api/videos',
+      watchlist: '/api/watchlist',
+      playback: '/api/playback'
+    }
+  });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
