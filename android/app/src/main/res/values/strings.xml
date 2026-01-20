@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ADNFLIX</string>
+    <string name="home">Home</string>
+    <string name="browse">Browse</string>
+    <string name="watchlist">My List</string>
+    <string name="account">Account</string>
+    <string name="search">Search</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="logout">Logout</string>
+    <string name="continue_watching">Continue Watching</string>
+    <string name="trending">Trending Now</string>
+    <string name="new_releases">New Releases</string>
+    <string name="movies">Movies</string>
+    <string name="series">Series</string>
+    <string name="play">Play</string>
+    <string name="add_to_list">Add to My List</string>
+    <string name="remove_from_list">Remove from My List</string>
+    <string name="subscription">Subscription</string>
+    <string name="help">Help &amp; Support</string>
+    <string name="settings">Settings</string>
+</resources>
