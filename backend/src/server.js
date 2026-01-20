@@ -5,6 +5,8 @@ import session from 'express-session';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 // Load environment variables
 dotenv.config();
@@ -14,31 +16,128 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
-  credentials: true
+// Trust proxy in production (for correct protocol detection behind reverse proxy)
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+// CORS Configuration - Dynamic for production
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // In production, allow same-origin and configured origins
+    const allowedOrigins = process.env.CORS_ORIGINS 
+      ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+      : [];
+    
+    // Allow localhost in development
+    if (!isProduction) {
+      const devOrigins = [
+        'http://localhost:8080',
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://127.0.0.1:8080',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173'
+      ];
+      allowedOrigins.push(...devOrigins);
+    }
+    
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      // In production with no specific origins, allow same-origin
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Range'],
+  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length']
+};
+
+app.use(cors(corsOptions));
+
+// Security middleware using Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled for video streaming compatibility
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow video/image loading
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting - protect against abuse
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 100 : 1000, // Limit requests per IP
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for video/audio streaming
+    return req.path.startsWith('/api/videos/') || req.path.includes('/audio/');
+  }
+});
+
+// Apply rate limiting to API routes
+app.use('/api/', apiLimiter);
+
+// Stricter rate limit for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 10 : 100, // 10 attempts per 15 min in production
+  message: { error: 'Too many login attempts, please try again later.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
+// Body parsers with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Session configuration
+// Session configuration - production ready
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your_session_secret',
+  secret: process.env.SESSION_SECRET || 'change_this_secret_in_production',
+  name: 'adnflix.sid', // Custom session cookie name
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction, // HTTPS only in production
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: isProduction ? 'strict' : 'lax'
   }
 }));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'ADNFLIX Backend API is running' });
+// Health check endpoint - production ready
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: isProduction ? 'production' : 'development',
+    version: process.env.npm_package_version || '1.0.0'
+  };
+  
+  // Optional: Check database connectivity
+  try {
+    const pool = (await import('./config/database.js')).default;
+    await pool.query('SELECT 1');
+    health.database = 'connected';
+  } catch (err) {
+    health.database = 'disconnected';
+    health.status = 'degraded';
+  }
+  
+  res.status(health.status === 'ok' ? 200 : 503).json(health);
 });
 
 // API Routes
@@ -68,6 +167,23 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/config', configRoutes);
 
+// Serve static frontend files in production (BEFORE error handlers)
+if (isProduction) {
+  const frontendPath = join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendPath, {
+    maxAge: '1d', // Cache static assets
+    etag: true
+  }));
+  
+  // SPA fallback - serve index.html for all non-API routes
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+      return next();
+    }
+    res.sendFile(join(frontendPath, 'index.html'));
+  });
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -77,14 +193,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// 404 handler for API routes only
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// Start server
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 ADNFLIX Server running on ${HOST}:${PORT}`);
+  console.log(`📍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  if (!isProduction) {
+    console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+  }
 });
 
 export default app;

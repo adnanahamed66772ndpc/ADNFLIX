@@ -47,10 +47,11 @@ gradle-app.setting
 !gradle-wrapper.jar
 .gradletasknamecache
 
-# Environment
+# Environment (keep .env.example files)
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # OS files
 Thumbs.db

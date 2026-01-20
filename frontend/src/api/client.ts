@@ -1,40 +1,56 @@
-// API Client to replace Supabase client
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// API Client - Production Ready with Dynamic URLs
+// Automatically detects production/development environment
+
+// Get dynamic API URL based on current environment
+export const getApiUrl = (): string => {
+  // Server-side rendering check
+  if (typeof window === 'undefined') {
+    return import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  }
+  
+  const { protocol, hostname, port } = window.location;
+  
+  // Development mode: localhost or explicit env variable
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Use environment variable if set, otherwise use same-origin API
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    // Default: API runs on port 3000 in development
+    return `${protocol}//${hostname}:3000/api`;
+  }
+  
+  // Production mode: Use same origin (reverse proxy handles routing)
+  return `${protocol}//${hostname}${port ? ':' + port : ''}/api`;
+};
+
+// Get display URL for documentation
+export const getDisplayApiUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return import.meta.env.VITE_API_URL || '/api';
+  }
+  
+  const { protocol, hostname, port } = window.location;
+  return `${protocol}//${hostname}${port ? ':' + port : ''}/api`;
+};
+
+// Legacy exports for backward compatibility
+export const API_URL = getApiUrl();
 export const API_BASE_URL = API_URL.replace('/api', '');
 
-// Helper to get dynamic API URL based on current domain
-export const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const { protocol, host } = window.location;
-    // If we're on localhost, use the env variable or default
-    if (host.includes('localhost') || host.includes('127.0.0.1')) {
-      return API_URL;
-    }
-    // For production, use the same domain
-    return `${protocol}//${host}/api`;
-  }
-  return API_URL;
-};
-
-// Get display URL for documentation (without /api suffix for base)
-export const getDisplayApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const { protocol, host } = window.location;
-    return `${protocol}//${host}/api`;
-  }
-  return API_URL;
-};
-
 class ApiClient {
-  private baseUrl: string;
   private token: string | null = null;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  constructor() {
     // Load token from localStorage
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
     }
+  }
+
+  // Dynamic base URL - always computed fresh for production flexibility
+  private get baseUrl(): string {
+    return getApiUrl();
   }
 
   setToken(token: string | null) {
@@ -151,5 +167,5 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_URL);
+export const apiClient = new ApiClient();
 export default apiClient;
