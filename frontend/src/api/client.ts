@@ -3,24 +3,25 @@
 
 // Get dynamic API URL based on current environment
 export const getApiUrl = (): string => {
+  // Always use VITE_API_URL if set (for separate frontend/backend deployment)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
   // Server-side rendering check
   if (typeof window === 'undefined') {
-    return import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    return 'http://localhost:3000/api';
   }
   
   const { protocol, hostname, port } = window.location;
   
-  // Development mode: localhost or explicit env variable
+  // Development mode: localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // Use environment variable if set, otherwise use same-origin API
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
     // Default: API runs on port 3000 in development
     return `${protocol}//${hostname}:3000/api`;
   }
   
-  // Production mode: Use same origin (reverse proxy handles routing)
+  // Production mode: Use same origin (if reverse proxy) or configured API URL
   return `${protocol}//${hostname}${port ? ':' + port : ''}/api`;
 };
 

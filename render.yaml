@@ -24,3 +24,25 @@ services:
       # - JWT_SECRET
       # - SESSION_SECRET
       # - CORS_ORIGINS
+
+  # Frontend Static Site
+  - type: web
+    name: adnflix-web
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=31536000
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://adnflix-api.onrender.com/api
