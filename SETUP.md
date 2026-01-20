@@ -21,6 +21,8 @@ Run the migration SQL file:
 mysql -u root -p adnflix < backend/migrations/001_initial_schema.sql
 ```
 
+okey 
+
 **Option B: phpMyAdmin**
 1. Open phpMyAdmin
 2. Select `adnflix` database
