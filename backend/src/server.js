@@ -223,14 +223,11 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API route not found' });
 });
 
-// Start server
-const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 ADNFLIX Server running on ${HOST}:${PORT}`);
+// Start server - cPanel/LiteSpeed compatible
+// Let cPanel inject PORT, don't force HOST binding
+app.listen(PORT, () => {
+  console.log(`🚀 ADNFLIX Server running on port ${PORT}`);
   console.log(`📍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-  if (!isProduction) {
-    console.log(`🔗 API URL: http://localhost:${PORT}/api`);
-  }
 });
 
 export default app;
