@@ -45,4 +45,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://adnflix-api.onrender.com/api
+        value: https://api.coliningram.site/api

@@ -6,9 +6,9 @@ A full-stack video streaming platform with React frontend and Node.js backend.
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://elijahcoleman.site |
-| Backend API | https://api.elijahcoleman.site |
-| API Health | https://api.elijahcoleman.site/health |
+| Frontend | https://coliningram.site |
+| Backend API | https://api.coliningram.site |
+| API Health | https://api.coliningram.site/health |
 
 ---
 
@@ -144,7 +144,7 @@ JWT_EXPIRES_IN=7d
 SESSION_SECRET=your_session_secret
 
 # CORS
-CORS_ORIGINS=https://yourdomain.com
+CORS_ORIGINS=https://coliningram.site,https://www.coliningram.site
 
 # Storage
 VIDEO_STORAGE_PATH=./storage/videos
@@ -154,7 +154,7 @@ MAX_VIDEO_SIZE=5368709120
 ### Frontend (.env.production)
 
 ```env
-VITE_API_URL=https://api.yourdomain.com/api
+VITE_API_URL=https://api.coliningram.site/api
 ```
 
 ---
@@ -214,19 +214,19 @@ cd .. && npm run dev
    - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist`
 4. Add rewrite rule: `/* → /index.html`
-5. Add env: `VITE_API_URL=https://your-api.onrender.com/api`
+5. Add env: `VITE_API_URL=https://api.coliningram.site/api`
 
 ### Option 2: cPanel
 
 #### Backend Setup
-1. Create folder: `/home/username/adnflix-backend/`
-2. Upload backend files
+1. Create folder: `/home/username/ADNFLIX/backend/`
+2. Upload backend files (or clone repo)
 3. Create `.env` file with Aiven credentials
 4. Setup Node.js App in cPanel:
-   - Root: `adnflix-backend`
+   - Root: `ADNFLIX/backend`
    - Startup: `src/server.js`
    - Run NPM Install
-5. Create subdomain: `api.yourdomain.com`
+5. Create subdomain: `api.coliningram.site`
 
 #### Frontend Setup
 1. Build locally: `cd frontend && npm run build`
