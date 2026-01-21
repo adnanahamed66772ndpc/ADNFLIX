@@ -1,10 +1,10 @@
-import pool from '../config/database.js';
-import { hashPassword, comparePassword } from '../utils/password.js';
-import { generateToken } from '../utils/jwt.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { hashPassword, comparePassword } = require('../utils/password.js');
+const { generateToken } = require('../utils/jwt.js');
+const { v4: uuidv4 } = require('uuid');
 
 // Register new user
-export async function register(req, res, next) {
+async function register(req, res, next) {
   try {
     const { email, password, displayName } = req.body;
 
@@ -78,7 +78,7 @@ export async function register(req, res, next) {
 }
 
 // Login user
-export async function login(req, res, next) {
+async function login(req, res, next) {
   try {
     const { email, password } = req.body;
 
@@ -144,7 +144,7 @@ export async function login(req, res, next) {
 }
 
 // Logout user
-export async function logout(req, res, next) {
+async function logout(req, res, next) {
   try {
     req.session.destroy((err) => {
       if (err) {
@@ -159,7 +159,7 @@ export async function logout(req, res, next) {
 }
 
 // Get current user
-export async function getCurrentUser(req, res, next) {
+async function getCurrentUser(req, res, next) {
   try {
     const userId = req.userId;
 
@@ -200,7 +200,7 @@ export async function getCurrentUser(req, res, next) {
 }
 
 // Update profile
-export async function updateProfile(req, res, next) {
+async function updateProfile(req, res, next) {
   try {
     const userId = req.userId;
     const { displayName, avatarUrl } = req.body;
@@ -226,3 +226,5 @@ export async function updateProfile(req, res, next) {
     next(error);
   }
 }
+
+module.exports = { register, login, logout, getCurrentUser, updateProfile };

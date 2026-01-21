@@ -1,5 +1,5 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getPlaybackProgress,
   updatePlaybackProgress,
   getProgress,
@@ -7,8 +7,8 @@ import {
   getSeriesProgress,
   deleteMovieProgress,
   deleteSeriesProgress
-} from '../controllers/playbackController.js';
-import { authenticateJWT } from '../middleware/auth.js';
+} = require('../controllers/playbackController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
 
 const router = express.Router();
 
@@ -29,4 +29,4 @@ router.delete('/movie/:titleId', authenticateJWT, deleteMovieProgress);
 router.get('/series/:titleId', authenticateJWT, getSeriesProgress);
 router.delete('/series/:titleId', authenticateJWT, deleteSeriesProgress);
 
-export default router;
+module.exports = router;

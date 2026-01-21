@@ -1,11 +1,11 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getPageContent,
   getAllPages,
   updatePageContent
-} from '../controllers/pagesController.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
+} = require('../controllers/pagesController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -13,4 +13,4 @@ router.get('/:key', getPageContent);
 router.get('/', authenticateJWT, requireAdmin, getAllPages);
 router.put('/:key', authenticateJWT, requireAdmin, updatePageContent);
 
-export default router;
+module.exports = router;

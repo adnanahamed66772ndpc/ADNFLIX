@@ -1,13 +1,13 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getTickets,
   getTicketById,
   createTicket,
   updateTicket,
   addReply
-} from '../controllers/ticketsController.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
+} = require('../controllers/ticketsController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -17,4 +17,4 @@ router.post('/', authenticateJWT, createTicket);
 router.put('/:id', authenticateJWT, requireAdmin, updateTicket);
 router.post('/:id/replies', authenticateJWT, addReply);
 
-export default router;
+module.exports = router;

@@ -1,7 +1,7 @@
-import pool from '../config/database.js';
+const pool = require('../config/database.js');
 
 // Check if user has a specific role
-export async function hasRole(userId, role) {
+async function hasRole(userId, role) {
   try {
     const [roles] = await pool.execute(
       'SELECT role FROM user_roles WHERE user_id = ? AND role = ?',
@@ -13,11 +13,8 @@ export async function hasRole(userId, role) {
   }
 }
 
-// Export for use in routes
-export { hasRole as default };
-
 // Middleware to require admin role
-export async function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   try {
     if (!req.userId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -45,7 +42,7 @@ export async function requireAdmin(req, res, next) {
 }
 
 // Middleware to require specific role
-export function requireRole(role) {
+function requireRole(role) {
   return async (req, res, next) => {
     try {
       if (!req.userId) {
@@ -63,3 +60,5 @@ export function requireRole(role) {
     }
   };
 }
+
+module.exports = { hasRole, requireAdmin, requireRole };

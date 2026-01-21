@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { hasRole } from '../middleware/roles.js';
+const pool = require('../config/database.js');
+const { hasRole  } = require('../middleware/roles.js');
 
 // Get all users (admin only)
-export async function getUsers(req, res, next) {
+async function getUsers(req, res, next) {
   try {
     const [profiles] = await pool.execute(
       'SELECT * FROM profiles ORDER BY created_at DESC'
@@ -50,7 +50,7 @@ export async function getUsers(req, res, next) {
 }
 
 // Update user role (admin only)
-export async function updateUserRole(req, res, next) {
+async function updateUserRole(req, res, next) {
   try {
     const { userId } = req.params;
     const { role } = req.body;
@@ -77,7 +77,7 @@ export async function updateUserRole(req, res, next) {
 }
 
 // Update user subscription (admin only)
-export async function updateUserSubscription(req, res, next) {
+async function updateUserSubscription(req, res, next) {
   try {
     const { userId } = req.params;
     const { plan, expiresAt } = req.body;
@@ -102,7 +102,7 @@ export async function updateUserSubscription(req, res, next) {
 }
 
 // Delete user (admin only)
-export async function deleteUser(req, res, next) {
+async function deleteUser(req, res, next) {
   try {
     const { userId } = req.params;
 
@@ -114,3 +114,6 @@ export async function deleteUser(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getUsers, updateUserRole, updateUserSubscription, deleteUser };

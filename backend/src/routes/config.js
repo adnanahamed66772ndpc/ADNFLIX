@@ -1,4 +1,4 @@
-import express from 'express';
+const express = require('express');
 
 const router = express.Router();
 
@@ -60,7 +60,7 @@ const paymentMethods = [
     name: 'bKash',
     logo: 'bkash',
     color: '#E2136E',
-    number: '01XXXXXXXXX', // Replace with actual number
+    number: '01XXXXXXXXX',
     instructions: [
       'Open bKash App or dial *247#',
       'Select "Send Money"',
@@ -75,7 +75,7 @@ const paymentMethods = [
     name: 'Nagad',
     logo: 'nagad',
     color: '#F6921E',
-    number: '01XXXXXXXXX', // Replace with actual number
+    number: '01XXXXXXXXX',
     instructions: [
       'Open Nagad App or dial *167#',
       'Select "Send Money"',
@@ -90,7 +90,7 @@ const paymentMethods = [
     name: 'Rocket',
     logo: 'rocket',
     color: '#8C3494',
-    number: '01XXXXXXXXX', // Replace with actual number
+    number: '01XXXXXXXXX',
     instructions: [
       'Open Rocket App or dial *322#',
       'Select "Send Money"',
@@ -123,4 +123,4 @@ router.get('/', (req, res) => {
   });
 });
 
-export default router;
+module.exports = router;

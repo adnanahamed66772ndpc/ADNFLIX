@@ -1,13 +1,9 @@
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const mysql = require('mysql2/promise');
+const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -28,7 +24,7 @@ const poolConfig = {
 
 // SSL configuration for Aiven and other cloud databases
 // Aiven requires SSL - set DB_SSL=true in your .env
-if (process.env.DB_SSL === 'true' || process.env.DB_HOST?.includes('aiven')) {
+if (process.env.DB_SSL === 'true' || (process.env.DB_HOST && process.env.DB_HOST.includes('aiven'))) {
   // Check if CA certificate file exists
   const caPath = process.env.DB_SSL_CA || path.join(__dirname, '../../certs/ca.pem');
   
@@ -66,7 +62,7 @@ pool.getConnection()
   .catch(err => {
     console.error('❌ Database connection error:', err.message);
     console.error('   Check your .env file: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME');
-    if (process.env.DB_HOST?.includes('aiven')) {
+    if (process.env.DB_HOST && process.env.DB_HOST.includes('aiven')) {
       console.error('   For Aiven: Make sure DB_SSL=true is set');
     }
     if (isProduction) {
@@ -75,4 +71,4 @@ pool.getConnection()
     }
   });
 
-export default pool;
+module.exports = pool;

@@ -1,13 +1,13 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getCategories,
   getCategory,
   createCategory,
   updateCategory,
   deleteCategory
-} from '../controllers/categoriesController.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
+} = require('../controllers/categoriesController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -20,4 +20,4 @@ router.post('/', authenticateJWT, requireAdmin, createCategory);
 router.put('/:id', authenticateJWT, requireAdmin, updateCategory);
 router.delete('/:id', authenticateJWT, requireAdmin, deleteCategory);
 
-export default router;
+module.exports = router;

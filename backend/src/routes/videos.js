@@ -1,9 +1,9 @@
-import express from 'express';
-import { uploadVideo, serveVideo, deleteVideo, listVideos, uploadAudio, serveAudio } from '../controllers/videoController.js';
-import { uploadVideo as uploadMiddleware } from '../middleware/upload.js';
-import { uploadSingleAudio } from '../middleware/audioUpload.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
+const express = require('express');
+const { uploadVideo, serveVideo, deleteVideo, listVideos, uploadAudio, serveAudio } = require('../controllers/videoController.js');
+const { uploadVideo: uploadMiddleware } = require('../middleware/upload.js');
+const { uploadSingleAudio } = require('../middleware/audioUpload.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -23,4 +23,4 @@ router.get('/', authenticateJWT, requireAdmin, listVideos);
 router.post('/audio/upload', authenticateJWT, requireAdmin, uploadSingleAudio, uploadAudio);
 router.get('/audio/:filename', serveAudio);
 
-export default router;
+module.exports = router;

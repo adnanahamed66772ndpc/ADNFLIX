@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-import crypto from 'crypto';
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+const crypto = require('crypto');
 
 dotenv.config();
 
@@ -23,14 +23,14 @@ const SECRET = JWT_SECRET || (() => {
   return crypto.randomBytes(32).toString('hex');
 })();
 
-export function generateToken(payload) {
+function generateToken(payload) {
   return jwt.sign(payload, SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     algorithm: 'HS256'
   });
 }
 
-export function verifyToken(token) {
+function verifyToken(token) {
   try {
     return jwt.verify(token, SECRET, {
       algorithms: ['HS256']
@@ -40,10 +40,12 @@ export function verifyToken(token) {
   }
 }
 
-export function decodeToken(token) {
+function decodeToken(token) {
   try {
     return jwt.decode(token);
   } catch (error) {
     return null;
   }
 }
+
+module.exports = { generateToken, verifyToken, decodeToken };

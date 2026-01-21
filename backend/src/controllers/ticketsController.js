@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // Get all tickets (admin only) or user's own tickets
-export async function getTickets(req, res, next) {
+async function getTickets(req, res, next) {
   try {
     const { status, priority } = req.query;
     const userId = req.user?.id;
@@ -60,7 +60,7 @@ export async function getTickets(req, res, next) {
 }
 
 // Get single ticket with replies
-export async function getTicketById(req, res, next) {
+async function getTicketById(req, res, next) {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -111,7 +111,7 @@ export async function getTicketById(req, res, next) {
 }
 
 // Create new ticket
-export async function createTicket(req, res, next) {
+async function createTicket(req, res, next) {
   try {
     const { subject, message, priority = 'medium' } = req.body;
     const userId = req.user?.id;
@@ -133,7 +133,7 @@ export async function createTicket(req, res, next) {
 }
 
 // Update ticket status (admin only)
-export async function updateTicket(req, res, next) {
+async function updateTicket(req, res, next) {
   try {
     const { id } = req.params;
     const { status, priority } = req.body;
@@ -168,7 +168,7 @@ export async function updateTicket(req, res, next) {
 }
 
 // Add reply to ticket
-export async function addReply(req, res, next) {
+async function addReply(req, res, next) {
   try {
     const { id } = req.params;
     const { message } = req.body;
@@ -210,3 +210,6 @@ export async function addReply(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getTickets, getTicketById, createTicket, updateTicket, addReply };

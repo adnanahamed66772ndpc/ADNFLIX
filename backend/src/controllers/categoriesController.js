@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // Get all categories
-export async function getCategories(req, res, next) {
+async function getCategories(req, res, next) {
   try {
     const { type } = req.query;
     let query = 'SELECT * FROM categories';
@@ -32,7 +32,7 @@ export async function getCategories(req, res, next) {
 }
 
 // Get single category
-export async function getCategory(req, res, next) {
+async function getCategory(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -61,7 +61,7 @@ export async function getCategory(req, res, next) {
 }
 
 // Create category
-export async function createCategory(req, res, next) {
+async function createCategory(req, res, next) {
   try {
     const { name, slug, type = 'genre', description } = req.body;
 
@@ -100,7 +100,7 @@ export async function createCategory(req, res, next) {
 }
 
 // Update category
-export async function updateCategory(req, res, next) {
+async function updateCategory(req, res, next) {
   try {
     const { id } = req.params;
     const { name, slug, type, description } = req.body;
@@ -165,7 +165,7 @@ export async function updateCategory(req, res, next) {
 }
 
 // Delete category
-export async function deleteCategory(req, res, next) {
+async function deleteCategory(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -186,3 +186,6 @@ export async function deleteCategory(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getCategories, getCategory, createCategory, updateCategory, deleteCategory };

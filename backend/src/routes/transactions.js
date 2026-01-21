@@ -1,12 +1,12 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getTransactions,
   createTransaction,
   approveTransaction,
   rejectTransaction
-} from '../controllers/transactionsController.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin, hasRole } from '../middleware/roles.js';
+} = require('../controllers/transactionsController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin, hasRole } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -24,4 +24,4 @@ router.post('/', createTransaction);
 router.post('/:transactionId/approve', requireAdmin, approveTransaction);
 router.post('/:transactionId/reject', requireAdmin, rejectTransaction);
 
-export default router;
+module.exports = router;

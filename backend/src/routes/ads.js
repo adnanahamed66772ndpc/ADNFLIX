@@ -1,5 +1,5 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getAdSettings,
   updateAdSettings,
   getAdVideos,
@@ -8,9 +8,9 @@ import {
   updateAdVideo,
   deleteAdVideo,
   trackImpression
-} from '../controllers/adsController.js';
-import { authenticateJWT, optionalAuth } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
+} = require('../controllers/adsController.js');
+const { authenticateJWT, optionalAuth } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -26,4 +26,4 @@ router.post('/videos', authenticateJWT, requireAdmin, addAdVideo);
 router.put('/videos/:id', authenticateJWT, requireAdmin, updateAdVideo);
 router.delete('/videos/:id', authenticateJWT, requireAdmin, deleteAdVideo);
 
-export default router;
+module.exports = router;

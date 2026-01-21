@@ -1,13 +1,12 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getUsers,
   updateUserRole,
   updateUserSubscription,
   deleteUser
-} from '../controllers/adminController.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
-import { v4 as uuidv4 } from 'uuid';
+} = require('../controllers/adminController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -16,4 +15,4 @@ router.put('/users/:userId/role', authenticateJWT, requireAdmin, updateUserRole)
 router.put('/users/:userId/subscription', authenticateJWT, requireAdmin, updateUserSubscription);
 router.delete('/users/:userId', authenticateJWT, requireAdmin, deleteUser);
 
-export default router;
+module.exports = router;

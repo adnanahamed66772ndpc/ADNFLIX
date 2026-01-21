@@ -1,5 +1,5 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 /**
  * Validate audio tracks structure
@@ -20,7 +20,7 @@ function validateAudioTracks(audioTracks) {
 }
 
 // Get all titles
-export async function getTitles(req, res, next) {
+async function getTitles(req, res, next) {
   try {
     const [titles] = await pool.execute(
       'SELECT * FROM titles ORDER BY created_at DESC'
@@ -145,7 +145,7 @@ export async function getTitles(req, res, next) {
 }
 
 // Get title by ID
-export async function getTitleById(req, res, next) {
+async function getTitleById(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -262,7 +262,7 @@ export async function getTitleById(req, res, next) {
 }
 
 // Create title (admin only)
-export async function createTitle(req, res, next) {
+async function createTitle(req, res, next) {
   try {
     const title = req.body;
     
@@ -332,7 +332,7 @@ export async function createTitle(req, res, next) {
 }
 
 // Update title (admin only)
-export async function updateTitle(req, res, next) {
+async function updateTitle(req, res, next) {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -389,7 +389,7 @@ export async function updateTitle(req, res, next) {
 }
 
 // Delete title (admin only)
-export async function deleteTitle(req, res, next) {
+async function deleteTitle(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -402,7 +402,7 @@ export async function deleteTitle(req, res, next) {
 }
 
 // Add season (admin only)
-export async function addSeason(req, res, next) {
+async function addSeason(req, res, next) {
   try {
     const { titleId } = req.params;
     const { seasonNumber, name } = req.body;
@@ -421,7 +421,7 @@ export async function addSeason(req, res, next) {
 }
 
 // Delete season (admin only)
-export async function deleteSeason(req, res, next) {
+async function deleteSeason(req, res, next) {
   try {
     const { seasonId } = req.params;
 
@@ -434,7 +434,7 @@ export async function deleteSeason(req, res, next) {
 }
 
 // Add episode (admin only)
-export async function addEpisode(req, res, next) {
+async function addEpisode(req, res, next) {
   try {
     const { seasonId } = req.params;
     const episode = req.body;
@@ -498,7 +498,7 @@ export async function addEpisode(req, res, next) {
 }
 
 // Delete episode (admin only)
-export async function deleteEpisode(req, res, next) {
+async function deleteEpisode(req, res, next) {
   try {
     const { episodeId } = req.params;
 
@@ -509,3 +509,6 @@ export async function deleteEpisode(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { validateAudioTracks, getTitles, getTitleById, createTitle, updateTitle, deleteTitle, addSeason, deleteSeason, addEpisode, deleteEpisode };

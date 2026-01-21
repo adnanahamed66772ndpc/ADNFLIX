@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // Get ad settings
-export async function getAdSettings(req, res, next) {
+async function getAdSettings(req, res, next) {
   try {
     const [settings] = await pool.execute(
       'SELECT * FROM ad_settings LIMIT 1'
@@ -29,7 +29,7 @@ export async function getAdSettings(req, res, next) {
 }
 
 // Update ad settings (admin only)
-export async function updateAdSettings(req, res, next) {
+async function updateAdSettings(req, res, next) {
   try {
     const updates = req.body;
 
@@ -107,7 +107,7 @@ export async function updateAdSettings(req, res, next) {
 }
 
 // Get ad videos
-export async function getAdVideos(req, res, next) {
+async function getAdVideos(req, res, next) {
   try {
     const [videos] = await pool.execute(
       'SELECT * FROM ad_videos ORDER BY created_at DESC'
@@ -128,7 +128,7 @@ export async function getAdVideos(req, res, next) {
 }
 
 // Get active ad videos
-export async function getActiveAdVideos(req, res, next) {
+async function getActiveAdVideos(req, res, next) {
   try {
     const [videos] = await pool.execute(
       'SELECT * FROM ad_videos WHERE active = true ORDER BY created_at DESC'
@@ -149,7 +149,7 @@ export async function getActiveAdVideos(req, res, next) {
 }
 
 // Add ad video (admin only)
-export async function addAdVideo(req, res, next) {
+async function addAdVideo(req, res, next) {
   try {
     const video = req.body;
     const videoId = uuidv4();
@@ -175,7 +175,7 @@ export async function addAdVideo(req, res, next) {
 }
 
 // Update ad video (admin only)
-export async function updateAdVideo(req, res, next) {
+async function updateAdVideo(req, res, next) {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -207,7 +207,7 @@ export async function updateAdVideo(req, res, next) {
 }
 
 // Delete ad video (admin only)
-export async function deleteAdVideo(req, res, next) {
+async function deleteAdVideo(req, res, next) {
   try {
     const { id } = req.params;
 
@@ -220,7 +220,7 @@ export async function deleteAdVideo(req, res, next) {
 }
 
 // Track ad impression
-export async function trackImpression(req, res, next) {
+async function trackImpression(req, res, next) {
   try {
     const { adId, impressionType, titleId } = req.body;
     const userId = req.userId || null;
@@ -261,3 +261,6 @@ function formatAdSettings(settings) {
     updatedAt: settings.updated_at
   };
 }
+
+
+module.exports = { getAdSettings, updateAdSettings, getAdVideos, getActiveAdVideos, addAdVideo, updateAdVideo, deleteAdVideo, trackImpression, formatAdSettings };

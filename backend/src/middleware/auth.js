@@ -1,7 +1,7 @@
-import { verifyToken } from '../utils/jwt.js';
+const { verifyToken } = require('../utils/jwt.js');
 
 // JWT Authentication middleware
-export function authenticateJWT(req, res, next) {
+function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -38,7 +38,7 @@ export function authenticateJWT(req, res, next) {
 }
 
 // Session authentication middleware
-export function authenticateSession(req, res, next) {
+function authenticateSession(req, res, next) {
     if (req.session && req.session.userId) {
       req.userId = req.session.userId;
       req.userEmail = req.session.email;
@@ -72,7 +72,7 @@ export function authenticateSession(req, res, next) {
 }
 
 // Optional authentication (doesn't fail if not authenticated)
-export function optionalAuth(req, res, next) {
+function optionalAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -99,3 +99,5 @@ export function optionalAuth(req, res, next) {
 
   next();
 }
+
+module.exports = { authenticateJWT, authenticateSession, optionalAuth };

@@ -1,10 +1,10 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // =====================================================
 // Get all user's playback progress (movies + series)
 // =====================================================
-export async function getPlaybackProgress(req, res, next) {
+async function getPlaybackProgress(req, res, next) {
   try {
     const userId = req.userId;
 
@@ -51,7 +51,7 @@ export async function getPlaybackProgress(req, res, next) {
 // =====================================================
 // Update playback progress (auto-detect movie vs series)
 // =====================================================
-export async function updatePlaybackProgress(req, res, next) {
+async function updatePlaybackProgress(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId, episodeId, progressSeconds, durationSeconds } = req.body;
@@ -113,7 +113,7 @@ export async function updatePlaybackProgress(req, res, next) {
 // =====================================================
 // Get progress for specific title/episode
 // =====================================================
-export async function getProgress(req, res, next) {
+async function getProgress(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.params;
@@ -156,7 +156,7 @@ export async function getProgress(req, res, next) {
 // =====================================================
 // Get movie progress only
 // =====================================================
-export async function getMovieProgress(req, res, next) {
+async function getMovieProgress(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.params;
@@ -186,7 +186,7 @@ export async function getMovieProgress(req, res, next) {
 // =====================================================
 // Get series progress (all episodes for a series)
 // =====================================================
-export async function getSeriesProgress(req, res, next) {
+async function getSeriesProgress(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.params;
@@ -212,7 +212,7 @@ export async function getSeriesProgress(req, res, next) {
 // =====================================================
 // Delete movie progress (for "Remove from Continue Watching")
 // =====================================================
-export async function deleteMovieProgress(req, res, next) {
+async function deleteMovieProgress(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.params;
@@ -231,7 +231,7 @@ export async function deleteMovieProgress(req, res, next) {
 // =====================================================
 // Delete series progress (all episodes or specific episode)
 // =====================================================
-export async function deleteSeriesProgress(req, res, next) {
+async function deleteSeriesProgress(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.params;
@@ -256,3 +256,6 @@ export async function deleteSeriesProgress(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getPlaybackProgress, updatePlaybackProgress, getProgress, getMovieProgress, getSeriesProgress, deleteMovieProgress, deleteSeriesProgress };

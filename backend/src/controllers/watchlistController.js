@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // Get user's watchlist
-export async function getWatchlist(req, res, next) {
+async function getWatchlist(req, res, next) {
   try {
     const userId = req.userId;
 
@@ -22,7 +22,7 @@ export async function getWatchlist(req, res, next) {
 }
 
 // Add to watchlist
-export async function addToWatchlist(req, res, next) {
+async function addToWatchlist(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.body;
@@ -53,7 +53,7 @@ export async function addToWatchlist(req, res, next) {
 }
 
 // Remove from watchlist
-export async function removeFromWatchlist(req, res, next) {
+async function removeFromWatchlist(req, res, next) {
   try {
     const userId = req.userId;
     const { titleId } = req.params;
@@ -68,3 +68,6 @@ export async function removeFromWatchlist(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getWatchlist, addToWatchlist, removeFromWatchlist };

@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // Get page content by key
-export async function getPageContent(req, res, next) {
+async function getPageContent(req, res, next) {
   try {
     const { key } = req.params;
     const [rows] = await pool.execute(
@@ -21,7 +21,7 @@ export async function getPageContent(req, res, next) {
 }
 
 // Get all pages (admin only)
-export async function getAllPages(req, res, next) {
+async function getAllPages(req, res, next) {
   try {
     const [rows] = await pool.execute(
       'SELECT id, page_key, title, updated_at, updated_by FROM page_content ORDER BY page_key'
@@ -33,7 +33,7 @@ export async function getAllPages(req, res, next) {
 }
 
 // Update page content (admin only)
-export async function updatePageContent(req, res, next) {
+async function updatePageContent(req, res, next) {
   try {
     const { key } = req.params;
     const { title, content } = req.body;
@@ -69,3 +69,6 @@ export async function updatePageContent(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getPageContent, getAllPages, updatePageContent };

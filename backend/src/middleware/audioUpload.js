@@ -1,7 +1,7 @@
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { VIDEO_STORAGE_PATH } from '../config/storage.js';
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { VIDEO_STORAGE_PATH } = require('../config/storage.js');
 
 /**
  * Audio File Upload Middleware
@@ -43,7 +43,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Configure multer for audio files
-export const uploadAudio = multer({
+const uploadAudio = multer({
   storage,
   fileFilter,
   limits: {
@@ -52,4 +52,6 @@ export const uploadAudio = multer({
 });
 
 // Single audio file upload middleware
-export const uploadSingleAudio = uploadAudio.single('audio');
+const uploadSingleAudio = uploadAudio.single('audio');
+
+module.exports = { uploadAudio, uploadSingleAudio };

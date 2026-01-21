@@ -1,7 +1,7 @@
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { VIDEO_STORAGE_PATH, MAX_VIDEO_SIZE } from '../config/storage.js';
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { VIDEO_STORAGE_PATH, MAX_VIDEO_SIZE } = require('../config/storage.js');
 
 /**
  * Video Upload Middleware - No Encoding/Conversion Policy
@@ -46,7 +46,7 @@ const fileFilter = (req, file, cb) => {
 
 // Configure multer - no encoding, transcoding, or quality changes
 // Files are stored exactly as uploaded
-export const upload = multer({
+const upload = multer({
   storage,
   fileFilter,
   limits: {
@@ -56,4 +56,6 @@ export const upload = multer({
 
 // Single file upload middleware
 // Uploads video files in their original quality without any processing
-export const uploadVideo = upload.single('video');
+const uploadVideo = upload.single('video');
+
+module.exports = { upload, uploadVideo };

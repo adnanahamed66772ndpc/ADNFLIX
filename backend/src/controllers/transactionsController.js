@@ -1,8 +1,8 @@
-import pool from '../config/database.js';
-import { v4 as uuidv4 } from 'uuid';
+const pool = require('../config/database.js');
+const { v4: uuidv4  } = require('uuid');
 
 // Get transactions
-export async function getTransactions(req, res, next) {
+async function getTransactions(req, res, next) {
   try {
     const userId = req.userId;
     const isAdmin = req.isAdmin; // Set by admin middleware
@@ -40,7 +40,7 @@ export async function getTransactions(req, res, next) {
 }
 
 // Create transaction
-export async function createTransaction(req, res, next) {
+async function createTransaction(req, res, next) {
   try {
     const userId = req.userId;
     const { planId, paymentMethod, transactionId, amount, senderNumber } = req.body;
@@ -77,7 +77,7 @@ export async function createTransaction(req, res, next) {
 }
 
 // Approve transaction (admin only)
-export async function approveTransaction(req, res, next) {
+async function approveTransaction(req, res, next) {
   try {
     const { transactionId } = req.params;
     const adminId = req.userId;
@@ -124,7 +124,7 @@ export async function approveTransaction(req, res, next) {
 }
 
 // Reject transaction (admin only)
-export async function rejectTransaction(req, res, next) {
+async function rejectTransaction(req, res, next) {
   try {
     const { transactionId } = req.params;
     const { reason } = req.body;
@@ -145,3 +145,6 @@ export async function rejectTransaction(req, res, next) {
     next(error);
   }
 }
+
+
+module.exports = { getTransactions, createTransaction, approveTransaction, rejectTransaction };

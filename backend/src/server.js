@@ -1,18 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const dotenv = require('dotenv');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // Load environment variables
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,7 +125,7 @@ app.get('/health', async (req, res) => {
   
   // Optional: Check database connectivity
   try {
-    const pool = (await import('./config/database.js')).default;
+    const pool = require('./config/database.js');
     await pool.query('SELECT 1');
     health.database = 'connected';
   } catch (err) {
@@ -141,18 +137,18 @@ app.get('/health', async (req, res) => {
 });
 
 // API Routes
-import authRoutes from './routes/auth.js';
-import videoRoutes from './routes/videos.js';
-import titlesRoutes from './routes/titles.js';
-import watchlistRoutes from './routes/watchlist.js';
-import playbackRoutes from './routes/playback.js';
-import transactionRoutes from './routes/transactions.js';
-import adminRoutes from './routes/admin.js';
-import adsRoutes from './routes/ads.js';
-import categoriesRoutes from './routes/categories.js';
-import ticketsRoutes from './routes/tickets.js';
-import pagesRoutes from './routes/pages.js';
-import configRoutes from './routes/config.js';
+const authRoutes = require('./routes/auth.js');
+const videoRoutes = require('./routes/videos.js');
+const titlesRoutes = require('./routes/titles.js');
+const watchlistRoutes = require('./routes/watchlist.js');
+const playbackRoutes = require('./routes/playback.js');
+const transactionRoutes = require('./routes/transactions.js');
+const adminRoutes = require('./routes/admin.js');
+const adsRoutes = require('./routes/ads.js');
+const categoriesRoutes = require('./routes/categories.js');
+const ticketsRoutes = require('./routes/tickets.js');
+const pagesRoutes = require('./routes/pages.js');
+const configRoutes = require('./routes/config.js');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
@@ -168,13 +164,12 @@ app.use('/api/pages', pagesRoutes);
 app.use('/api/config', configRoutes);
 
 // Serve static frontend files in production (only if SERVE_FRONTEND=true)
-// For API-only deployment (Render), set SERVE_FRONTEND=false or leave unset
 if (isProduction && process.env.SERVE_FRONTEND === 'true') {
-  const frontendPath = join(__dirname, '../../frontend/dist');
-  const fs = await import('fs');
+  const fs = require('fs');
+  const frontendPath = path.join(__dirname, '../../frontend/dist');
   
   // Only serve if frontend dist exists
-  if (fs.existsSync(join(frontendPath, 'index.html'))) {
+  if (fs.existsSync(path.join(frontendPath, 'index.html'))) {
     app.use(express.static(frontendPath, {
       maxAge: '1d', // Cache static assets
       etag: true
@@ -185,7 +180,7 @@ if (isProduction && process.env.SERVE_FRONTEND === 'true') {
       if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
         return next();
       }
-      res.sendFile(join(frontendPath, 'index.html'));
+      res.sendFile(path.join(frontendPath, 'index.html'));
     });
     console.log('📁 Serving frontend static files');
   }
@@ -224,10 +219,9 @@ app.use('/api/*', (req, res) => {
 });
 
 // Start server - cPanel/LiteSpeed compatible
-// Let cPanel inject PORT, don't force HOST binding
 app.listen(PORT, () => {
   console.log(`🚀 ADNFLIX Server running on port ${PORT}`);
   console.log(`📍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 });
 
-export default app;
+module.exports = app;

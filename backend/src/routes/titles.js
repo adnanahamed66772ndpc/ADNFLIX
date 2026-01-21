@@ -1,5 +1,5 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   getTitles,
   getTitleById,
   createTitle,
@@ -9,9 +9,9 @@ import {
   deleteSeason,
   addEpisode,
   deleteEpisode
-} from '../controllers/titlesController.js';
-import { authenticateJWT } from '../middleware/auth.js';
-import { requireAdmin } from '../middleware/roles.js';
+} = require('../controllers/titlesController.js');
+const { authenticateJWT } = require('../middleware/auth.js');
+const { requireAdmin } = require('../middleware/roles.js');
 
 const router = express.Router();
 
@@ -32,4 +32,4 @@ router.delete('/seasons/:seasonId', authenticateJWT, requireAdmin, deleteSeason)
 router.post('/seasons/:seasonId/episodes', authenticateJWT, requireAdmin, addEpisode);
 router.delete('/episodes/:episodeId', authenticateJWT, requireAdmin, deleteEpisode);
 
-export default router;
+module.exports = router;
