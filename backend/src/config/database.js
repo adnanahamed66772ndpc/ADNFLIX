@@ -62,13 +62,10 @@ pool.getConnection()
   .catch(err => {
     console.error('❌ Database connection error:', err.message);
     console.error('   Check your .env file: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME');
-    if (process.env.DB_HOST && process.env.DB_HOST.includes('aiven')) {
-      console.error('   For Aiven: Make sure DB_SSL=true is set');
-    }
-    if (isProduction) {
-      console.error('Exiting due to database connection failure...');
-      process.exit(1);
-    }
+    console.error('   For cPanel: Username format is cpaneluser_dbuser');
+    console.error('   For cPanel: Database format is cpaneluser_dbname');
+    // Don't exit - let the app start and fail gracefully on DB operations
+    // This allows health checks to show "degraded" status
   });
 
 module.exports = pool;

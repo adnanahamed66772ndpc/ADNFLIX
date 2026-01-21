@@ -26,9 +26,9 @@ A full-stack video streaming platform with React frontend and Node.js backend.
 - **Zustand** - State Management
 
 ### Backend
-- **Node.js** - Runtime
+- **Node.js** - Runtime (CommonJS)
 - **Express.js** - Web Framework
-- **MySQL** - Database (Aiven Cloud)
+- **MySQL** - Database (cPanel MySQL)
 - **JWT** - Authentication
 - **Multer** - File Uploads
 - **Helmet** - Security Headers
@@ -122,26 +122,26 @@ STEMFLIX/
 
 ## Environment Variables
 
-### Backend (.env)
+### Backend (.env) - cPanel MySQL
 
 ```env
 # Server
 NODE_ENV=production
 PORT=3000
-HOST=0.0.0.0
 
-# Database (Aiven MySQL)
-DB_HOST=mysql-xxxxx.aivencloud.com
-DB_PORT=24641
-DB_USER=avnadmin
-DB_PASSWORD=your_password
-DB_NAME=adnflix
-DB_SSL=true
+# Database (cPanel MySQL)
+# Create in cPanel -> MySQL Databases
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=colining_adnflix
+DB_PASSWORD=your_database_password
+DB_NAME=colining_adnflix
 
-# Security
-JWT_SECRET=your_jwt_secret_min_32_chars
+# Security (Generate secure random strings!)
+# Run: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+JWT_SECRET=your_64_char_jwt_secret
 JWT_EXPIRES_IN=7d
-SESSION_SECRET=your_session_secret
+SESSION_SECRET=your_64_char_session_secret
 
 # CORS
 CORS_ORIGINS=https://coliningram.site,https://www.coliningram.site
@@ -162,8 +162,8 @@ VITE_API_URL=https://api.coliningram.site/api
 ## Local Development
 
 ### Prerequisites
-- Node.js 18+
-- MySQL (or Aiven account)
+- Node.js 18+ (or Node 20 on cPanel)
+- MySQL (cPanel MySQL or local)
 
 ### Setup
 
@@ -216,22 +216,59 @@ cd .. && npm run dev
 4. Add rewrite rule: `/* → /index.html`
 5. Add env: `VITE_API_URL=https://api.coliningram.site/api`
 
-### Option 2: cPanel
+### Option 2: cPanel (Current Deployment)
 
-#### Backend Setup
-1. Create folder: `/home/username/ADNFLIX/backend/`
-2. Upload backend files (or clone repo)
-3. Create `.env` file with Aiven credentials
-4. Setup Node.js App in cPanel:
-   - Root: `ADNFLIX/backend`
-   - Startup: `src/server.js`
-   - Run NPM Install
-5. Create subdomain: `api.coliningram.site`
+#### Step 1: Create MySQL Database
+1. Login to cPanel
+2. Go to **MySQL Databases**
+3. Create database: `colining_adnflix`
+4. Create user: `colining_adnflix` with strong password
+5. Add user to database with **ALL PRIVILEGES**
 
-#### Frontend Setup
+#### Step 2: Backend Setup
+```bash
+# SSH into your cPanel
+ssh colining@your-server
+
+# Clone repo to api subdomain folder
+cd ~/api.coliningram.site
+git clone https://github.com/adnanahamed66772ndpc/ADNFLIX.git .
+# OR if folder exists:
+git pull origin main
+
+# Create .env file
+nano .env
+# Paste production config (see Environment Variables above)
+
+# Generate secure secrets
+node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(48).toString('base64'))"
+node -e "console.log('SESSION_SECRET=' + require('crypto').randomBytes(48).toString('base64'))"
+```
+
+#### Step 3: Setup Node.js App in cPanel
+1. Go to cPanel → **Setup Node.js App**
+2. Click **Create Application**
+3. Settings:
+   - **Node.js version**: 20.x
+   - **Application mode**: Production
+   - **Application root**: `api.coliningram.site`
+   - **Application URL**: `api.coliningram.site`
+   - **Startup file**: `src/server.js`
+4. Click **Create**
+5. Click **Run NPM Install**
+6. Click **Restart**
+
+#### Step 4: Run Database Migrations
+```bash
+cd ~/api.coliningram.site
+source /home/colining/nodevenv/api.coliningram.site/20/bin/activate
+npm run migrate
+```
+
+#### Step 5: Frontend Setup
 1. Build locally: `cd frontend && npm run build`
-2. Upload `dist/` contents to domain root
-3. Create `.htaccess`:
+2. Upload `dist/` contents to `~/coliningram.site/`
+3. Create `.htaccess` in frontend root:
 ```apache
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -245,17 +282,19 @@ cd .. && npm run dev
 
 ---
 
-## Database (Aiven MySQL)
+## Database (cPanel MySQL)
 
-### Connection Details
-- **Host**: mysql-bab0d9d-zohomail-e882.h.aivencloud.com
-- **Port**: 24641
-- **Database**: adnflix
-- **SSL**: Required
+### Create Database in cPanel
+1. Go to **cPanel → MySQL Databases**
+2. Create database: `colining_adnflix`
+3. Create user with strong password
+4. Add user to database with ALL PRIVILEGES
 
 ### Run Migrations
 ```bash
-cd backend
+cd ~/api.coliningram.site
+# Activate Node.js environment
+source /home/colining/nodevenv/api.coliningram.site/20/bin/activate
 npm run migrate
 ```
 
@@ -339,9 +378,10 @@ npm run preview     # Preview production build
 - Ensure frontend URL is whitelisted
 
 ### Database Connection Failed
-- Verify Aiven credentials
-- Ensure `DB_SSL=true` is set
-- Check firewall/IP whitelist on Aiven
+- Verify cPanel MySQL credentials
+- Check username format: `cpaneluser_dbuser`
+- Check database format: `cpaneluser_dbname`
+- Ensure user has privileges on database
 
 ### 404 on Page Refresh (Frontend)
 - Add `.htaccess` rewrite rules
