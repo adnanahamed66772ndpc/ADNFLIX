@@ -14,15 +14,10 @@ CREATE TABLE IF NOT EXISTS movie_progress (
   duration_seconds DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  -- Each user can only have one progress entry per movie
+
   UNIQUE KEY unique_user_movie (user_id, title_id),
-  
-  -- Foreign keys
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (title_id) REFERENCES titles(id) ON DELETE CASCADE,
-  
-  -- Indexes for faster queries
   INDEX idx_user_id (user_id),
   INDEX idx_title_id (title_id),
   INDEX idx_updated_at (updated_at)
@@ -40,51 +35,24 @@ CREATE TABLE IF NOT EXISTS series_progress (
   duration_seconds DECIMAL(10,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  -- Each user can only have one progress entry per episode
+
   UNIQUE KEY unique_user_episode (user_id, title_id, episode_id),
-  
-  -- Foreign keys
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (title_id) REFERENCES titles(id) ON DELETE CASCADE,
   FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE,
-  
-  -- Indexes for faster queries
   INDEX idx_user_id (user_id),
   INDEX idx_title_id (title_id),
   INDEX idx_episode_id (episode_id),
   INDEX idx_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- =====================================================
--- Migrate existing data from playback_progress
--- =====================================================
-
--- Migrate movie progress (entries without episode_id)
+-- Migrate existing data from playback_progress (if table exists)
 INSERT IGNORE INTO movie_progress (id, user_id, title_id, progress_seconds, duration_seconds, updated_at)
-SELECT 
-  id,
-  user_id,
-  title_id,
-  progress_seconds,
-  COALESCE(duration_seconds, 0),
-  updated_at
-FROM playback_progress 
+SELECT id, user_id, title_id, progress_seconds, COALESCE(duration_seconds, 0), updated_at
+FROM playback_progress
 WHERE episode_id IS NULL;
 
--- Migrate series progress (entries with episode_id)
 INSERT IGNORE INTO series_progress (id, user_id, title_id, episode_id, progress_seconds, duration_seconds, updated_at)
-SELECT 
-  id,
-  user_id,
-  title_id,
-  episode_id,
-  progress_seconds,
-  COALESCE(duration_seconds, 0),
-  updated_at
-FROM playback_progress 
+SELECT id, user_id, title_id, episode_id, progress_seconds, COALESCE(duration_seconds, 0), updated_at
+FROM playback_progress
 WHERE episode_id IS NOT NULL;
-
--- Note: We keep the old playback_progress table for now
--- You can drop it later after verifying the migration:
--- DROP TABLE IF EXISTS playback_progress;

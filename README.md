@@ -51,12 +51,13 @@ STEMFLIX/
 │   └── dist/                # Build Output
 │
 ├── backend/                  # Node.js Backend
+│   ├── migrations/           # SQL schema (001, 002, 003, 004)
 │   ├── src/
 │   │   ├── config/          # Database & Storage Config
 │   │   ├── controllers/     # Route Controllers
 │   │   ├── middleware/      # Auth, Upload, etc.
+│   │   ├── migrations/      # runMigrations.js runner
 │   │   ├── routes/          # API Routes
-│   │   ├── migrations/      # Database Migrations
 │   │   └── server.js        # Entry Point
 │   └── storage/             # Video Storage
 │
