@@ -25,15 +25,8 @@ export const getApiUrl = (): string => {
   return `${protocol}//${hostname}${port ? ':' + port : ''}/api`;
 };
 
-// Get display URL for documentation
-export const getDisplayApiUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return import.meta.env.VITE_API_URL || '/api';
-  }
-  
-  const { protocol, hostname, port } = window.location;
-  return `${protocol}//${hostname}${port ? ':' + port : ''}/api`;
-};
+// Display URL for docs – uses same logic as getApiUrl (env + current origin)
+export const getDisplayApiUrl = (): string => getApiUrl();
 
 // Legacy exports for backward compatibility
 export const API_URL = getApiUrl();

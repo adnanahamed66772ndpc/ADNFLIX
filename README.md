@@ -2,13 +2,15 @@
 
 A full-stack video streaming platform with React frontend and Node.js backend.
 
-## Live URLs
+## Live URLs (set via environment / config)
+
+Replace `YOUR_DOMAIN` with your actual domain (e.g. `coliningram.site`).
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://coliningram.site |
-| Backend API | https://api.coliningram.site |
-| API Health | https://api.coliningram.site/health |
+| Frontend | `https://YOUR_DOMAIN` |
+| Backend API | `https://api.YOUR_DOMAIN` |
+| API Health | `https://api.YOUR_DOMAIN/health` |
 
 ---
 
@@ -134,9 +136,9 @@ PORT=3000
 # Create in cPanel -> MySQL Databases
 DB_HOST=localhost
 DB_PORT=3306
-DB_USER=colining_adnflix
+DB_USER=YOUR_CPANEL_DB_USER
 DB_PASSWORD=your_database_password
-DB_NAME=colining_adnflix
+DB_NAME=YOUR_CPANEL_DB_NAME
 
 # Security (Generate secure random strings!)
 # Run: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
@@ -144,8 +146,10 @@ JWT_SECRET=your_64_char_jwt_secret
 JWT_EXPIRES_IN=7d
 SESSION_SECRET=your_64_char_session_secret
 
-# CORS
-CORS_ORIGINS=https://coliningram.site,https://www.coliningram.site
+# CORS (comma-separated; use your real frontend origin)
+CORS_ORIGINS=https://YOUR_DOMAIN,https://www.YOUR_DOMAIN
+# Optional: dev origins (defaults: localhost:8080,3000,5173)
+# CORS_DEV_ORIGINS=http://localhost:8080,http://localhost:5173
 
 # Storage
 VIDEO_STORAGE_PATH=./storage/videos
@@ -155,7 +159,8 @@ MAX_VIDEO_SIZE=5368709120
 ### Frontend (.env.production)
 
 ```env
-VITE_API_URL=https://api.coliningram.site/api
+# API base URL (use your backend origin)
+VITE_API_URL=https://api.YOUR_DOMAIN/api
 ```
 
 ---
@@ -215,7 +220,7 @@ cd .. && npm run dev
    - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist`
 4. Add rewrite rule: `/* → /index.html`
-5. Add env: `VITE_API_URL=https://api.coliningram.site/api`
+5. Add env: `VITE_API_URL=https://api.YOUR_DOMAIN/api` (or your Render API URL)
 
 ### Option 2: cPanel (Current Deployment)
 
@@ -229,10 +234,10 @@ cd .. && npm run dev
 #### Step 2: Backend Setup
 ```bash
 # SSH into your cPanel
-ssh colining@your-server
+ssh YOUR_CPANEL_USER@your-server
 
-# Clone repo to api subdomain folder
-cd ~/api.coliningram.site
+# Clone repo to api subdomain folder (replace with your paths)
+cd ~/api.YOUR_DOMAIN
 git clone https://github.com/adnanahamed66772ndpc/ADNFLIX.git .
 # OR if folder exists:
 git pull origin main
@@ -252,8 +257,8 @@ node -e "console.log('SESSION_SECRET=' + require('crypto').randomBytes(48).toStr
 3. Settings:
    - **Node.js version**: 20.x
    - **Application mode**: Production
-   - **Application root**: `api.coliningram.site`
-   - **Application URL**: `api.coliningram.site`
+   - **Application root**: `api.YOUR_DOMAIN` (or your subdomain folder)
+   - **Application URL**: `api.YOUR_DOMAIN`
    - **Startup file**: `src/server.js`
 4. Click **Create**
 5. Click **Run NPM Install**
@@ -261,14 +266,14 @@ node -e "console.log('SESSION_SECRET=' + require('crypto').randomBytes(48).toStr
 
 #### Step 4: Run Database Migrations
 ```bash
-cd ~/api.coliningram.site
-source /home/colining/nodevenv/api.coliningram.site/20/bin/activate
+cd ~/api.YOUR_DOMAIN
+source $HOME/nodevenv/api.YOUR_DOMAIN/20/bin/activate  # adjust path per cPanel
 npm run migrate
 ```
 
 #### Step 5: Frontend Setup
 1. Build locally: `cd frontend && npm run build`
-2. Upload `dist/` contents to `~/coliningram.site/`
+2. Upload `dist/` contents to your domain root (e.g. `~/YOUR_DOMAIN/` or `~/public_html/`)
 3. Create `.htaccess` in frontend root:
 ```apache
 <IfModule mod_rewrite.c>
@@ -293,9 +298,9 @@ npm run migrate
 
 ### Run Migrations
 ```bash
-cd ~/api.coliningram.site
-# Activate Node.js environment
-source /home/colining/nodevenv/api.coliningram.site/20/bin/activate
+cd ~/api.YOUR_DOMAIN
+# Activate Node.js environment (path from cPanel Node.js App)
+source $HOME/nodevenv/api.YOUR_DOMAIN/20/bin/activate
 npm run migrate
 ```
 

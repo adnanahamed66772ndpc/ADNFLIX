@@ -32,16 +32,18 @@ const corsOptions = {
       ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
       : [];
     
-    // Allow localhost in development
+    // In development: use CORS_DEV_ORIGINS env or default localhost origins
     if (!isProduction) {
-      const devOrigins = [
-        'http://localhost:8080',
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'http://127.0.0.1:8080',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:5173'
-      ];
+      const devOrigins = process.env.CORS_DEV_ORIGINS
+        ? process.env.CORS_DEV_ORIGINS.split(',').map(o => o.trim())
+        : [
+            'http://localhost:8080',
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://127.0.0.1:8080',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:5173'
+          ];
       allowedOrigins.push(...devOrigins);
     }
     

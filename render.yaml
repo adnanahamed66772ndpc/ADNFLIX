@@ -44,5 +44,6 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      # Set to your API URL (Render default: https://adnflix-api.onrender.com/api)
       - key: VITE_API_URL
-        value: https://api.coliningram.site/api
+        value: https://your-api-url.com/api
