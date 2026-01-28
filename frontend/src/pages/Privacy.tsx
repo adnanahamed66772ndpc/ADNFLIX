@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import { Loader2 } from 'lucide-react';
 import apiClient from '@/api/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface PageContent {
   id: string;
@@ -53,7 +54,7 @@ const Privacy = () => {
               {content ? (
                 <div 
                   className="prose prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: content.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.content) }}
                 />
               ) : (
                 <p className="text-muted-foreground">Content not available</p>

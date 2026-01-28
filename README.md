@@ -227,8 +227,8 @@ cd .. && npm run dev
 #### Step 1: Create MySQL Database
 1. Login to cPanel
 2. Go to **MySQL Databases**
-3. Create database: `colining_adnflix`
-4. Create user: `colining_adnflix` with strong password
+3. Create database (e.g. `youruser_adnflix`)
+4. Create user (e.g. `youruser_adnuser`) with strong password
 5. Add user to database with **ALL PRIVILEGES**
 
 #### Step 2: Backend Setup
@@ -292,7 +292,7 @@ npm run migrate
 
 ### Create Database in cPanel
 1. Go to **cPanel → MySQL Databases**
-2. Create database: `colining_adnflix`
+2. Create database (e.g. `youruser_adnflix`)
 3. Create user with strong password
 4. Add user to database with ALL PRIVILEGES
 

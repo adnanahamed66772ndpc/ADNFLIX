@@ -102,8 +102,17 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Session configuration - production ready
+const crypto = require('crypto');
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (isProduction && (!SESSION_SECRET || SESSION_SECRET.length < 32)) {
+  console.error('❌ FATAL: SESSION_SECRET must be set (min 32 characters) in production!');
+  process.exit(1);
+}
+if (!isProduction && !SESSION_SECRET) {
+  console.warn('⚠️  SESSION_SECRET not set; using random secret (sessions reset on restart).');
+}
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'change_this_secret_in_production',
+  secret: SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   name: 'adnflix.sid', // Custom session cookie name
   resave: false,
   saveUninitialized: false,
