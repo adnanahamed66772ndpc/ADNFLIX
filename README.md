@@ -63,7 +63,7 @@ STEMFLIX/
 │   │   └── server.js        # Entry Point
 │   └── storage/             # Video Storage
 │
-├── android/                  # Android App (Kotlin)
+├── android.zip               # Android app source (Kotlin) – unzip to build
 ├── render.yaml              # Render Deployment Config
 └── package.json             # Root Scripts
 ```
@@ -406,6 +406,16 @@ Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.Owni
 # Linux/Mac
 kill $(lsof -t -i:3000)
 ```
+
+---
+
+## Android app
+
+The repo includes **`android.zip`** – the Android (Kotlin) app source. To build:
+
+1. Unzip: `unzip android.zip`
+2. Open the `android` folder in Android Studio
+3. Set your API base URL in the app config and build
 
 ---
 

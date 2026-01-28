@@ -92,6 +92,7 @@ media/**/*.ts
 # Large media files
 *.iso
 *.zip
+!android.zip
 *.rar
 *.7z
 *.tar
