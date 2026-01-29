@@ -425,6 +425,41 @@ ISC License
 
 ---
 
+## Docker (Production)
+
+This repo includes a ready-to-run Docker production setup:
+
+- **web**: Nginx serves the frontend and proxies `/api` → backend
+- **backend**: Node.js API
+- **db**: MySQL (optional; you can point backend to external MySQL instead)
+
+### Start (Docker)
+
+From the project root:
+
+```bash
+docker compose up -d --build
+```
+
+Then run migrations once:
+
+```bash
+docker compose exec backend npm run migrate
+```
+
+### URLs
+
+- Frontend: `http://YOUR_SERVER_IP/`
+- API health: `http://YOUR_SERVER_IP/health`
+- API: `http://YOUR_SERVER_IP/api`
+
+### Notes
+
+- **Secrets**: change `JWT_SECRET` and `SESSION_SECRET` in `docker-compose.yml` (min 32 chars).
+- **Videos storage**: persisted to `./storage/videos` on the host.
+
+---
+
 ## Author
 
 ADNFLIX Team
