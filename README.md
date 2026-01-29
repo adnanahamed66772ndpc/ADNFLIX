@@ -63,6 +63,7 @@ STEMFLIX/
 │   │   └── server.js        # Entry Point
 │   └── storage/             # Video Storage
 │
+├── .github/workflows/        # CI/CD (check on push, optional deploy)
 ├── android.zip               # Android app source (Kotlin) – unzip to build
 ├── docker-compose.yml       # Docker production stack
 └── package.json             # Root Scripts
@@ -355,6 +356,30 @@ docker compose exec backend npm run migrate
 
 - **Secrets**: change `JWT_SECRET` and `SESSION_SECRET` in `docker-compose.yml` (min 32 chars).
 - **Videos storage**: persisted to `./storage/videos` on the host.
+
+---
+
+## CI/CD (GitHub Actions)
+
+On every **push to `main`**:
+
+1. **Check**: install deps, lint frontend, build frontend. If any step fails, the workflow stops.
+2. **Deploy** (optional): if checks pass and deploy secrets are set, the workflow SSHs to your server and runs `git pull`, `docker compose pull`, `docker compose up -d --build`, then migrations.
+
+### Enable automatic deploy
+
+1. In your **production server**: clone the repo and run `docker compose up -d` once. Note the path (e.g. `~/STEMFLIX` or `/var/www/STEMFLIX`).
+2. In **GitHub**: repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add:
+   - **`DEPLOY_HOST`**: server IP or hostname (e.g. `123.45.67.89`).
+   - **`DEPLOY_USER`**: SSH user (e.g. `root` or `deploy`).
+   - **`SSH_PRIVATE_KEY`**: full contents of the private key that can SSH into the server (no passphrase, or use an agent).
+   - **`DEPLOY_PATH`** (optional): path to the app on the server (e.g. `/var/www/STEMFLIX`). Default is `~/STEMFLIX`.
+
+3. Push to `main`. The **Check** job runs every time; **Deploy** runs only when all checks pass and these secrets exist.
+
+### CI only (no deploy)
+
+If you do **not** add the deploy secrets, only the check job runs (lint + build). Deploy is skipped.
 
 ---
 
