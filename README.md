@@ -30,7 +30,7 @@ Replace `YOUR_DOMAIN` with your actual domain (e.g. `coliningram.site`).
 ### Backend
 - **Node.js** - Runtime (CommonJS)
 - **Express.js** - Web Framework
-- **MySQL** - Database (cPanel MySQL)
+- **MySQL** - Database
 - **JWT** - Authentication
 - **Multer** - File Uploads
 - **Helmet** - Security Headers
@@ -64,7 +64,7 @@ STEMFLIX/
 │   └── storage/             # Video Storage
 │
 ├── android.zip               # Android app source (Kotlin) – unzip to build
-├── render.yaml              # Render Deployment Config
+├── docker-compose.yml       # Docker production stack
 └── package.json             # Root Scripts
 ```
 
@@ -125,20 +125,19 @@ STEMFLIX/
 
 ## Environment Variables
 
-### Backend (.env) - cPanel MySQL
+### Backend (.env)
 
 ```env
 # Server
 NODE_ENV=production
 PORT=3000
 
-# Database (cPanel MySQL)
-# Create in cPanel -> MySQL Databases
+# Database (MySQL)
 DB_HOST=localhost
 DB_PORT=3306
-DB_USER=YOUR_CPANEL_DB_USER
+DB_USER=your_db_user
 DB_PASSWORD=your_database_password
-DB_NAME=YOUR_CPANEL_DB_NAME
+DB_NAME=your_db_name
 
 # Security (Generate secure random strings!)
 # Run: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
@@ -168,8 +167,8 @@ VITE_API_URL=https://api.YOUR_DOMAIN/api
 ## Local Development
 
 ### Prerequisites
-- Node.js 18+ (or Node 20 on cPanel)
-- MySQL (cPanel MySQL or local)
+- Node.js 18+
+- MySQL (local or use Docker)
 
 ### Setup
 
@@ -201,108 +200,9 @@ cd .. && npm run dev
 
 ## Deployment
 
-### Option 1: Render (Recommended)
+### Docker (Production)
 
-#### Backend (Web Service)
-1. Create new **Web Service**
-2. Connect to GitHub repo
-3. Settings:
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-4. Add environment variables (see above)
-
-#### Frontend (Static Site)
-1. Create new **Static Site**
-2. Connect to same repo
-3. Settings:
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist`
-4. Add rewrite rule: `/* → /index.html`
-5. Add env: `VITE_API_URL=https://api.YOUR_DOMAIN/api` (or your Render API URL)
-
-### Option 2: cPanel (Current Deployment)
-
-#### Step 1: Create MySQL Database
-1. Login to cPanel
-2. Go to **MySQL Databases**
-3. Create database (e.g. `youruser_adnflix`)
-4. Create user (e.g. `youruser_adnuser`) with strong password
-5. Add user to database with **ALL PRIVILEGES**
-
-#### Step 2: Backend Setup
-```bash
-# SSH into your cPanel
-ssh YOUR_CPANEL_USER@your-server
-
-# Clone repo to api subdomain folder (replace with your paths)
-cd ~/api.YOUR_DOMAIN
-git clone https://github.com/adnanahamed66772ndpc/ADNFLIX.git .
-# OR if folder exists:
-git pull origin main
-
-# Create .env file
-nano .env
-# Paste production config (see Environment Variables above)
-
-# Generate secure secrets
-node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(48).toString('base64'))"
-node -e "console.log('SESSION_SECRET=' + require('crypto').randomBytes(48).toString('base64'))"
-```
-
-#### Step 3: Setup Node.js App in cPanel
-1. Go to cPanel → **Setup Node.js App**
-2. Click **Create Application**
-3. Settings:
-   - **Node.js version**: 20.x
-   - **Application mode**: Production
-   - **Application root**: `api.YOUR_DOMAIN` (or your subdomain folder)
-   - **Application URL**: `api.YOUR_DOMAIN`
-   - **Startup file**: `src/server.js`
-4. Click **Create**
-5. Click **Run NPM Install**
-6. Click **Restart**
-
-#### Step 4: Run Database Migrations
-```bash
-cd ~/api.YOUR_DOMAIN
-source $HOME/nodevenv/api.YOUR_DOMAIN/20/bin/activate  # adjust path per cPanel
-npm run migrate
-```
-
-#### Step 5: Frontend Setup
-1. Build locally: `cd frontend && npm run build`
-2. Upload `dist/` contents to your domain root (e.g. `~/YOUR_DOMAIN/` or `~/public_html/`)
-3. Create `.htaccess` in frontend root:
-```apache
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-</IfModule>
-```
-
----
-
-## Database (cPanel MySQL)
-
-### Create Database in cPanel
-1. Go to **cPanel → MySQL Databases**
-2. Create database (e.g. `youruser_adnflix`)
-3. Create user with strong password
-4. Add user to database with ALL PRIVILEGES
-
-### Run Migrations
-```bash
-cd ~/api.YOUR_DOMAIN
-# Activate Node.js environment (path from cPanel Node.js App)
-source $HOME/nodevenv/api.YOUR_DOMAIN/20/bin/activate
-npm run migrate
-```
+See [Docker (Production)](#docker-production) below.
 
 ---
 
@@ -384,10 +284,8 @@ npm run preview     # Preview production build
 - Ensure frontend URL is whitelisted
 
 ### Database Connection Failed
-- Verify cPanel MySQL credentials
-- Check username format: `cpaneluser_dbuser`
-- Check database format: `cpaneluser_dbname`
-- Ensure user has privileges on database
+- Verify MySQL credentials in `.env`: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+- Ensure user has privileges on the database
 
 ### 404 on Page Refresh (Frontend)
 - Add `.htaccess` rewrite rules

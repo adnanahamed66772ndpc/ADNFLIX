@@ -62,8 +62,6 @@ pool.getConnection()
   .catch(err => {
     console.error('❌ Database connection error:', err.message);
     console.error('   Check your .env file: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME');
-    console.error('   For cPanel: Username format is cpaneluser_dbuser');
-    console.error('   For cPanel: Database format is cpaneluser_dbname');
     // Don't exit - let the app start and fail gracefully on DB operations
     // This allows health checks to show "degraded" status
   });

@@ -229,7 +229,7 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API route not found' });
 });
 
-// Start server - cPanel/LiteSpeed compatible
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 ADNFLIX Server running on port ${PORT}`);
   console.log(`📍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
