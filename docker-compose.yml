@@ -2,12 +2,11 @@ services:
   db:
     image: mysql:8.4
     container_name: adnflix-db
-    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_DATABASE: adnflix
       MYSQL_USER: adnflix
-      MYSQL_PASSWORD: adnflix_password_change_me
-      MYSQL_ROOT_PASSWORD: root_password_change_me
+      MYSQL_PASSWORD: "adnflix_password_change_me"
+      MYSQL_ROOT_PASSWORD: "root_password_change_me"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -21,6 +20,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: adnflix-backend
+    ports:
+      - "127.0.0.1:3000:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -29,7 +30,7 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: adnflix
-      DB_PASSWORD: adnflix_password_change_me
+      DB_PASSWORD: "adnflix_password_change_me"
       DB_NAME: adnflix
 
       # SECURITY (set strong values in real production)
