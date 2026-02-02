@@ -37,8 +37,8 @@ services:
       JWT_SECRET: CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS
       SESSION_SECRET: CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS
 
-      # CORS: allow Docker (localhost) and your production domain(s)
-      CORS_ORIGINS: "http://localhost,http://127.0.0.1,https://YOUR_DOMAIN,https://www.YOUR_DOMAIN"
+      # CORS: allow Docker (localhost) and production frontend
+      CORS_ORIGINS: "http://localhost,http://127.0.0.1,http://coliningram.site,http://www.coliningram.site"
     volumes:
       # Persist uploaded videos (adjust host path if needed)
       - ./storage/videos:/app/storage/videos

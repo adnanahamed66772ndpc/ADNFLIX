@@ -2,15 +2,13 @@
 
 A full-stack video streaming platform with React frontend and Node.js backend.
 
-## Live URLs (set via environment / config)
+## Live URLs
 
-Replace `YOUR_DOMAIN` with your actual domain (e.g. `coliningram.site`).
-
-| Service | URL |
-|---------|-----|
-| Frontend | `https://YOUR_DOMAIN` |
-| Backend API | `https://api.YOUR_DOMAIN` |
-| API Health | `https://api.YOUR_DOMAIN/health` |
+| Service     | URL |
+|------------|-----|
+| Frontend   | http://coliningram.site/ |
+| Backend API | http://api.coliningram.site/ |
+| API Health | http://api.coliningram.site/health |
 
 ---
 
