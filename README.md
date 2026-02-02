@@ -71,8 +71,8 @@ STEMFLIX/
 
 ## Default Admin
 
-- **Username:** `admin`
-- **Password:** `admin` (change after first login)
+- **Username:** `admin@admin.com`
+- **Password:** `admin123` (change after first login)
 - **Change password:** Log in → Account → Password tab.
 
 In Docker, the default admin is created automatically on first backend start (see `backend/src/migrations/seedAdmin.js`).
