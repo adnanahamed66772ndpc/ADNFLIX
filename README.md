@@ -164,23 +164,104 @@ npm run dev
 
 ## Docker (Production)
 
-Full stack: **db** (MySQL 8.4), **backend** (Node + migrations + seed admin), **web** (Nginx + frontend).
+Deploy the full app (database, backend, frontend) with Docker Compose v2. No host MySQL or Node required.
 
-```bash
-docker compose up -d --build
-```
+### What runs
 
-- Frontend: http://YOUR_SERVER_IP/
-- API: http://YOUR_SERVER_IP/api
-- Health: http://YOUR_SERVER_IP/health
+| Service   | Image / Build        | Role |
+|-----------|----------------------|------|
+| **db**    | `mysql:8.4`          | MySQL 8.4. No ports exposed on host; only backend can connect. |
+| **backend** | Built from `./backend` | Node.js API. Runs migrations then `seedAdmin.js` (creates `admin`/`admin` if missing), then starts server. Exposed only on **127.0.0.1:3000** (localhost). |
+| **web**   | Built from `./frontend` | Nginx: serves the built React app and proxies `/api` and `/health` to the backend. Exposed on **port 80**. |
 
-Migrations run on backend startup. Optional manual run:
+### Prerequisites
 
-```bash
-docker compose exec backend node src/migrations/runMigrations.js
-```
+- Docker and Docker Compose v2 installed on the server.
+- Port **80** free for the web container (and optionally **3000** if you need direct backend access on the host).
 
-**Before production:** set `JWT_SECRET` and `SESSION_SECRET` in `docker-compose.yml` (min 32 chars). Video files: `./storage/videos` on host.
+### Step-by-step
+
+1. **Clone the repo on the server**
+
+   ```bash
+   git clone https://github.com/adnanahamed66772ndpc/ADNFLIX.git
+   cd ADNFLIX
+   ```
+
+2. **Optional – production secrets**
+
+   Edit `docker-compose.yml` and set:
+
+   - `JWT_SECRET` and `SESSION_SECRET` to long random strings (min 32 characters).
+   - Optionally change `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, and `DB_PASSWORD` (keep them in sync; use quoted values if they contain special characters).
+
+   Generate secrets:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+   ```
+
+3. **Validate Compose file (optional)**
+
+   ```bash
+   docker compose config
+   ```
+
+4. **Build and start the stack**
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+   This builds the backend and frontend images, starts the DB, waits for MySQL to be healthy, then starts backend and web.
+
+5. **Verify**
+
+   - **Frontend:** http://YOUR_SERVER_IP/
+   - **API (via Nginx):** http://YOUR_SERVER_IP/api
+   - **Health (via Nginx):** http://YOUR_SERVER_IP/health
+   - **Backend direct (only on server):** http://127.0.0.1:3000/health
+
+   Default admin: **username** `admin`, **password** `admin` (change after first login).
+
+### Useful commands
+
+| Command | Description |
+|---------|-------------|
+| `docker compose up -d --build` | Build and start all services in background |
+| `docker compose up -d --build db backend` | Start only DB and backend (no web) |
+| `docker compose ps` | List running containers and status |
+| `docker compose logs -f backend` | Follow backend logs |
+| `docker compose logs -f db` | Follow MySQL logs |
+| `docker compose restart backend` | Restart backend only |
+| `docker compose down` | Stop and remove containers (volumes kept) |
+| `docker compose down -v` | Stop and remove containers and named volumes |
+| `docker compose exec backend node src/migrations/runMigrations.js` | Run migrations manually |
+| `docker compose exec backend sh` | Shell into backend container |
+
+### Volumes and data
+
+- **`mysql_data`** (named volume): MySQL data. Persists across `docker compose down`. Removed only with `docker compose down -v`.
+- **`./storage/videos`** (bind mount): Video files uploaded via the app. Create the folder on the host if needed; the backend can create it at runtime. Back up this path for your media.
+
+### Migrations and default admin
+
+- **Migrations:** Run automatically when the backend container starts (see `backend/docker-entrypoint.sh`: first migrations, then seed, then server).
+- **Default admin:** Created by `seedAdmin.js` if a user with username `admin` or email `admin@localhost` does not exist. Safe to run multiple times.
+
+### Reverse proxy (optional)
+
+If you put Nginx or Caddy in front of Docker:
+
+- Point your domain to the host; proxy `http://HOST:80` to the **web** container.
+- Backend is only on `127.0.0.1:3000`; the **web** container already proxies `/api` and `/health` to the backend, so the browser only talks to the **web** container on port 80.
+
+### Troubleshooting Docker
+
+- **MySQL not healthy:** Check `docker compose logs db`. Ensure no other MySQL is using the same data dir. For a clean start: `docker compose down -v` then `docker compose up -d --build` (this deletes DB data).
+- **Backend exits:** Check `docker compose logs backend`. Verify DB credentials in `docker-compose.yml` match the **db** service (e.g. `DB_HOST=db`, same passwords).
+- **502 / connection refused on /api:** Ensure **web** and **backend** are on the same Compose network (default). Restart: `docker compose restart backend web`.
+- **Port 80 in use:** Change the web port in `docker-compose.yml`, e.g. `"8080:80"`, and use http://YOUR_SERVER_IP:8080/.
 
 ---
 
