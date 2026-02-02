@@ -7,6 +7,7 @@ export type AppRole = 'admin' | 'user';
 export interface AuthUser {
   id: string;
   email: string;
+  username?: string | null;
   displayName: string | null;
   avatarUrl: string | null;
   subscriptionPlan: SubscriptionPlan;
@@ -21,11 +22,12 @@ interface UseAuthReturn {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (emailOrUsername: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, displayName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<AuthUser, 'displayName' | 'avatarUrl'>>) => Promise<boolean>;
   updateSubscription: (plan: SubscriptionPlan) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -33,6 +35,10 @@ const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email.trim());
 };
+
+const isEmailOrUsername = (s: string): boolean => s.trim().length >= 1;
+
+const isEmailLike = (s: string): boolean => s.trim().includes('@');
 
 const isValidPassword = (password: string): boolean => {
   return password.length >= 6 && password.length <= 128;
@@ -82,8 +88,12 @@ export function useAuth(): UseAuthReturn {
     initAuth();
   }, [fetchUserData]);
 
-  const login = async (email: string, password: string) => {
-    if (!isValidEmail(email)) {
+  const login = async (emailOrUsername: string, password: string) => {
+    const identifier = emailOrUsername.trim();
+    if (!identifier) {
+      return { success: false, error: 'Please enter your email or username' };
+    }
+    if (isEmailLike(identifier) && !isValidEmail(identifier)) {
       return { success: false, error: 'Please enter a valid email address' };
     }
     if (!isValidPassword(password)) {
@@ -92,7 +102,7 @@ export function useAuth(): UseAuthReturn {
 
     try {
       const response = await apiClient.post<{ success: boolean; token: string; user: AuthUser }>('/auth/login', {
-        email: email.trim().toLowerCase(),
+        email: isEmailLike(identifier) ? identifier.toLowerCase() : identifier,
         password,
       });
 
@@ -156,6 +166,19 @@ export function useAuth(): UseAuthReturn {
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!isValidPassword(newPassword)) {
+      return { success: false, error: 'New password must be between 6 and 128 characters' };
+    }
+    try {
+      await apiClient.patch('/auth/password', { currentPassword, newPassword });
+      return { success: true };
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to change password';
+      return { success: false, error: msg };
+    }
+  };
+
   const updateSubscription = async (plan: SubscriptionPlan): Promise<boolean> => {
     // This should be admin-only, but keeping for compatibility
     try {
@@ -181,6 +204,7 @@ export function useAuth(): UseAuthReturn {
     register,
     logout,
     updateProfile,
+    changePassword,
     updateSubscription,
     refreshProfile,
   };

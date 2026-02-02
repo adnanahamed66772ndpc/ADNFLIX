@@ -11,7 +11,8 @@ ENV NODE_ENV=production
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 3000
-CMD ["node", "src/server.js"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 

@@ -326,11 +326,11 @@ ISC License
 
 ## Docker (Production)
 
-This repo includes a ready-to-run Docker production setup:
+The **full app** runs in Docker: database, backend, and frontend in one stack.
 
-- **web**: Nginx serves the frontend and proxies `/api` → backend
-- **backend**: Node.js API
-- **db**: MySQL (optional; you can point backend to external MySQL instead)
+- **db**: MySQL 8.4 (no host ports; internal only)
+- **backend**: Node.js API (migrations run automatically on startup)
+- **web**: Nginx serves the frontend and proxies `/api` and `/health` to the backend
 
 ### Start (Docker)
 
@@ -340,10 +340,10 @@ From the project root:
 docker compose up -d --build
 ```
 
-Then run migrations once:
+This starts all three services. Migrations run automatically when the backend starts. To re-run migrations manually:
 
 ```bash
-docker compose exec backend npm run migrate
+docker compose exec backend node src/migrations/runMigrations.js
 ```
 
 ### URLs

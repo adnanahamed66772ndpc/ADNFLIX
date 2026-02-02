@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Crown, LogOut, ArrowRight, Loader2 } from 'lucide-react';
+import { User, Crown, LogOut, ArrowRight, Loader2, Lock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -9,12 +9,20 @@ import { subscriptionPlans } from '@/data/subscriptionData';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const Account = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'profile';
-  const { user, isAuthenticated, isLoading, logout } = useAuthContext();
+  const { user, isAuthenticated, isLoading, logout, changePassword } = useAuthContext();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -42,9 +50,10 @@ const Account = () => {
       <main className="pt-24 pb-8 container mx-auto px-4">
         <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
         
-        <Tabs defaultValue={defaultTab} className="w-full">
+        <Tabs value={defaultTab} onValueChange={(v) => setSearchParams({ tab: v })} className="w-full">
           <TabsList className="mb-8">
             <TabsTrigger value="profile"><User className="w-4 h-4 mr-2" />Profile</TabsTrigger>
+            <TabsTrigger value="password"><Lock className="w-4 h-4 mr-2" />Password</TabsTrigger>
             <TabsTrigger value="subscription"><Crown className="w-4 h-4 mr-2" />Subscription</TabsTrigger>
           </TabsList>
 
@@ -76,6 +85,75 @@ const Account = () => {
               <Button variant="destructive" className="mt-6" onClick={logout}>
                 <LogOut className="w-4 h-4 mr-2" />Sign Out
               </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="password">
+            <div className="max-w-md bg-card rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Change password</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                After login you can change your password here. Use a strong password (at least 6 characters).
+              </p>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (newPassword !== confirmPassword) {
+                    toast({ title: 'Passwords do not match', variant: 'destructive' });
+                    return;
+                  }
+                  setPasswordLoading(true);
+                  const result = await changePassword(currentPassword, newPassword);
+                  setPasswordLoading(false);
+                  if (result.success) {
+                    toast({ title: 'Password updated', description: 'Your password has been changed.' });
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  } else {
+                    toast({ title: 'Failed to change password', description: result.error, variant: 'destructive' });
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Current password</Label>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm new password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" disabled={passwordLoading}>
+                  {passwordLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Update password
+                </Button>
+              </form>
             </div>
           </TabsContent>
 

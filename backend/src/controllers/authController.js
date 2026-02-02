@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 // Register new user
 async function register(req, res, next) {
   try {
-    const { email, password, displayName } = req.body;
+    const { email, password, displayName, username } = req.body;
 
     // Validation
     if (!email || !password) {
@@ -22,24 +22,37 @@ async function register(req, res, next) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Check if user already exists
-    const [existingUsers] = await pool.execute(
-      'SELECT id FROM users WHERE email = ?',
-      [email.toLowerCase().trim()]
-    );
+    const userEmail = email.toLowerCase().trim();
+    const userUsername = username ? username.trim() : null;
+    if (userUsername !== null && (userUsername.length < 2 || userUsername.length > 64)) {
+      return res.status(400).json({ error: 'Username must be between 2 and 64 characters' });
+    }
 
-    if (existingUsers.length > 0) {
+    // Check if user already exists (email or username)
+    const [existingByEmail] = await pool.execute(
+      'SELECT id FROM users WHERE email = ?',
+      [userEmail]
+    );
+    if (existingByEmail.length > 0) {
       return res.status(400).json({ error: 'User already exists' });
+    }
+    if (userUsername) {
+      const [existingByUsername] = await pool.execute(
+        'SELECT id FROM users WHERE username = ?',
+        [userUsername]
+      );
+      if (existingByUsername.length > 0) {
+        return res.status(400).json({ error: 'Username already taken' });
+      }
     }
 
     // Create user
     const userId = uuidv4();
     const passwordHash = await hashPassword(password);
-    const userEmail = email.toLowerCase().trim();
 
     await pool.execute(
-      'INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)',
-      [userId, userEmail, passwordHash]
+      'INSERT INTO users (id, username, email, password_hash) VALUES (?, ?, ?, ?)',
+      [userId, userUsername, userEmail, passwordHash]
     );
 
     // Create profile
@@ -77,20 +90,27 @@ async function register(req, res, next) {
   }
 }
 
-// Login user
+// Login user (email or username)
 async function login(req, res, next) {
   try {
     const { email, password } = req.body;
+    const identifier = (email || '').toString().trim();
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Email/username and password are required' });
     }
 
-    // Find user
-    const [users] = await pool.execute(
-      'SELECT id, email, password_hash FROM users WHERE email = ?',
-      [email.toLowerCase().trim()]
-    );
+    const isEmail = identifier.includes('@');
+    // Find user by email or username
+    const [users] = isEmail
+      ? await pool.execute(
+          'SELECT id, email, username, password_hash FROM users WHERE email = ?',
+          [identifier.toLowerCase()]
+        )
+      : await pool.execute(
+          'SELECT id, email, username, password_hash FROM users WHERE username = ?',
+          [identifier]
+        );
 
     if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -130,6 +150,7 @@ async function login(req, res, next) {
       user: {
         id: user.id,
         email: user.email,
+        username: user.username || null,
         displayName: profiles[0]?.display_name || null,
         avatarUrl: profiles[0]?.avatar_url || null,
         subscriptionPlan: profiles[0]?.subscription_plan || 'free',
@@ -138,6 +159,42 @@ async function login(req, res, next) {
         createdAt: profiles[0]?.created_at || user.created_at
       }
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Change password (current user)
+async function changePassword(req, res, next) {
+  try {
+    const userId = req.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6 || newPassword.length > 128) {
+      return res.status(400).json({ error: 'New password must be between 6 and 128 characters' });
+    }
+
+    const [users] = await pool.execute(
+      'SELECT id, password_hash FROM users WHERE id = ?',
+      [userId]
+    );
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const valid = await comparePassword(currentPassword, users[0].password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await pool.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+
+    res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
     next(error);
   }
@@ -173,7 +230,7 @@ async function getCurrentUser(req, res, next) {
     }
 
     const [users] = await pool.execute(
-      'SELECT email, created_at FROM users WHERE id = ?',
+      'SELECT email, username, created_at FROM users WHERE id = ?',
       [userId]
     );
 
@@ -187,6 +244,7 @@ async function getCurrentUser(req, res, next) {
     res.json({
       id: userId,
       email: users[0].email,
+      username: users[0].username || null,
       displayName: profiles[0].display_name || null,
       avatarUrl: profiles[0].avatar_url || null,
       subscriptionPlan: profiles[0].subscription_plan || 'free',
@@ -227,4 +285,4 @@ async function updateProfile(req, res, next) {
   }
 }
 
-module.exports = { register, login, logout, getCurrentUser, updateProfile };
+module.exports = { register, login, logout, getCurrentUser, updateProfile, changePassword };

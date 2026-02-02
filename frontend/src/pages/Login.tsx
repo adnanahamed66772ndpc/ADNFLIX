@@ -21,7 +21,7 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(email.trim(), password);
 
     if (result.success) {
       toast({
@@ -60,13 +60,14 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email or username</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   id="email"
-                  type="email"
-                  placeholder="Enter your email"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Enter email or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"

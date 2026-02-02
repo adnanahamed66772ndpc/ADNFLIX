@@ -5,6 +5,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+# Use same-origin API in Docker (nginx proxies /api to backend)
+ENV VITE_API_URL=
 RUN npm run build
 
 
