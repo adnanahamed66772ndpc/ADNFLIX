@@ -1,38 +1,25 @@
 # ADNFLIX - Video Streaming Platform
 
-A full-stack video streaming platform with React frontend and Node.js backend.
+A full-stack video streaming platform with React frontend, Node.js backend, and optional Docker deployment.
+
+---
 
 ## Live URLs
 
-| Service     | URL |
-|------------|-----|
-| Frontend   | http://coliningram.site/ |
+| Service      | URL |
+|-------------|-----|
+| Frontend    | http://coliningram.site/ |
 | Backend API | http://api.coliningram.site/ |
-| API Health | http://api.coliningram.site/health |
+| API Health  | http://api.coliningram.site/health |
 
 ---
 
 ## Tech Stack
 
-### Frontend
-- **React 18** - UI Framework
-- **TypeScript** - Type Safety
-- **Vite** - Build Tool
-- **Tailwind CSS** - Styling
-- **Radix UI** - Component Library
-- **Framer Motion** - Animations
-- **React Router** - Navigation
-- **HLS.js** - Video Streaming
-- **Zustand** - State Management
-
-### Backend
-- **Node.js** - Runtime (CommonJS)
-- **Express.js** - Web Framework
-- **MySQL** - Database
-- **JWT** - Authentication
-- **Multer** - File Uploads
-- **Helmet** - Security Headers
-- **Express Rate Limit** - API Protection
+| Layer    | Technologies |
+|----------|--------------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Framer Motion, React Router, HLS.js |
+| Backend  | Node.js (CommonJS), Express.js, MySQL, JWT, Multer, Helmet, express-rate-limit |
 
 ---
 
@@ -40,350 +27,217 @@ A full-stack video streaming platform with React frontend and Node.js backend.
 
 ```
 STEMFLIX/
-├── frontend/                 # React Frontend
+├── .github/workflows/
+│   └── ci-cd.yml              # CI (lint, build) + optional SSH deploy
+├── backend/
+│   ├── migrations/            # SQL schema (001–005)
+│   │   ├── 001_initial_schema.sql
+│   │   ├── 002_add_categories.sql
+│   │   ├── 003_separate_progress_tables.sql
+│   │   ├── 004_add_tickets_and_pages.sql
+│   │   └── 005_add_username_and_seed_admin.sql
 │   ├── src/
-│   │   ├── api/             # API Client
-│   │   ├── components/      # Reusable Components
-│   │   ├── hooks/           # Custom Hooks
-│   │   ├── pages/           # Page Components
-│   │   └── lib/             # Utilities
-│   ├── public/              # Static Assets
-│   └── dist/                # Build Output
-│
-├── backend/                  # Node.js Backend
-│   ├── migrations/           # SQL schema (001, 002, 003, 004)
+│   │   ├── config/            # database.js, storage.js
+│   │   ├── controllers/       # auth, titles, videos, admin, ads, etc.
+│   │   ├── middleware/        # auth.js, roles.js, upload.js
+│   │   ├── migrations/        # runMigrations.js, seedAdmin.js
+│   │   ├── routes/            # auth, titles, watchlist, playback, admin, etc.
+│   │   ├── utils/             # jwt.js, password.js
+│   │   └── server.js
+│   ├── docker-entrypoint.sh   # migrations + seed admin + start server
+│   ├── Dockerfile
+│   ├── .env.example
+│   └── .env.production.example
+├── frontend/
 │   ├── src/
-│   │   ├── config/          # Database & Storage Config
-│   │   ├── controllers/     # Route Controllers
-│   │   ├── middleware/      # Auth, Upload, etc.
-│   │   ├── migrations/      # runMigrations.js runner
-│   │   ├── routes/          # API Routes
-│   │   └── server.js        # Entry Point
-│   └── storage/             # Video Storage
-│
-├── .github/workflows/        # CI/CD (check on push, optional deploy)
-├── android.zip               # Android app source (Kotlin) – unzip to build
-├── docker-compose.yml       # Docker production stack
-└── package.json             # Root Scripts
+│   │   ├── api/               # client.ts (API URL from env)
+│   │   ├── components/        # Navbar, Footer, VideoPlayer, admin, ui
+│   │   ├── contexts/          # AuthContext, TitlesContext
+│   │   ├── hooks/             # useAuth, useTitles, useWatchlist, etc.
+│   │   ├── lib/               # adProvider, sanitize, utils
+│   │   └── pages/             # Index, Browse, Watch, Login, Admin, Account, etc.
+│   ├── public/
+│   ├── nginx.default.conf     # SPA + /api proxy (Docker)
+│   ├── Dockerfile
+│   ├── .env.example
+│   └── .env.production
+├── docker-compose.yml         # db, backend, web (full stack)
+├── android.zip               # Android app source (Kotlin)
+├── package.json              # Root scripts (install:all, dev, build)
+└── README.md
 ```
+
+---
+
+## Default Admin
+
+- **Username:** `admin`
+- **Password:** `admin` (change after first login)
+- **Change password:** Log in → Account → Password tab.
+
+In Docker, the default admin is created automatically on first backend start (see `backend/src/migrations/seedAdmin.js`).
 
 ---
 
 ## API Endpoints
 
-### Authentication
+### Auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login user |
-| POST | `/api/auth/logout` | Logout user |
-| GET | `/api/auth/me` | Get current user |
+| POST | `/api/auth/register` | Register |
+| POST | `/api/auth/login` | Login (email or username) |
+| POST | `/api/auth/logout` | Logout |
+| GET | `/api/auth/me` | Current user |
 | PUT | `/api/auth/profile` | Update profile |
+| PATCH | `/api/auth/password` | Change password |
 
-### Titles (Movies/Series)
+### Titles
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/titles` | Get all titles |
-| GET | `/api/titles/:id` | Get title by ID |
-| GET | `/api/titles/featured` | Get featured titles |
-| GET | `/api/titles/trending` | Get trending titles |
-| GET | `/api/titles/search?q=` | Search titles |
+| GET | `/api/titles` | List titles |
+| GET | `/api/titles/:id` | Title by ID |
+| GET | `/api/titles/featured` | Featured |
+| GET | `/api/titles/trending` | Trending |
+| GET | `/api/titles/search?q=` | Search |
 
-### Categories
+### Categories, Watchlist, Playback, Config
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/categories` | Get all categories |
-| GET | `/api/categories/:id/titles` | Get titles by category |
-
-### Watchlist
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/watchlist` | Get user's watchlist |
-| POST | `/api/watchlist` | Add to watchlist |
-| DELETE | `/api/watchlist/:titleId` | Remove from watchlist |
-
-### Playback
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/playback/:titleId` | Get playback info |
-| POST | `/api/playback/progress` | Update watch progress |
-| GET | `/api/playback/continue` | Get continue watching |
-
-### Videos (Streaming)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/videos/:filename` | Stream video file |
-
-### Config
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/config/plans` | Get subscription plans |
-| GET | `/api/config/payment-methods` | Get payment methods |
+| GET | `/api/categories` | List categories |
+| GET | `/api/categories/:id/titles` | Titles by category |
+| GET/POST/DELETE | `/api/watchlist` | Watchlist |
+| GET | `/api/playback/:titleId` | Playback info |
+| POST | `/api/playback/progress` | Update progress |
+| GET | `/api/playback/continue` | Continue watching |
+| GET | `/api/videos/:filename` | Stream video |
+| GET | `/api/config/plans` | Subscription plans |
+| GET | `/api/config/payment-methods` | Payment methods |
 
 ---
 
 ## Environment Variables
 
-### Backend (.env)
+### Backend
 
-```env
-# Server
-NODE_ENV=production
-PORT=3000
+Copy `backend/.env.example` to `backend/.env` (or use `backend/.env.production.example` for production). Required:
 
-# Database (MySQL)
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=your_db_user
-DB_PASSWORD=your_database_password
-DB_NAME=your_db_name
+- **Server:** `NODE_ENV`, `PORT`
+- **Database:** `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+- **Security:** `JWT_SECRET`, `SESSION_SECRET` (min 32 chars in production)
+- **CORS:** `CORS_ORIGINS` (comma-separated frontend origins)
+- **Storage:** `VIDEO_STORAGE_PATH`, `MAX_VIDEO_SIZE` (optional)
 
-# Security (Generate secure random strings!)
-# Run: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-JWT_SECRET=your_64_char_jwt_secret
-JWT_EXPIRES_IN=7d
-SESSION_SECRET=your_64_char_session_secret
+Generate secrets:
 
-# CORS (comma-separated; use your real frontend origin)
-CORS_ORIGINS=https://YOUR_DOMAIN,https://www.YOUR_DOMAIN
-# Optional: dev origins (defaults: localhost:8080,3000,5173)
-# CORS_DEV_ORIGINS=http://localhost:8080,http://localhost:5173
-
-# Storage
-VIDEO_STORAGE_PATH=./storage/videos
-MAX_VIDEO_SIZE=5368709120
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 ```
 
-### Frontend (.env.production)
+### Frontend
 
-```env
-# API base URL (use your backend origin)
-VITE_API_URL=https://api.YOUR_DOMAIN/api
-```
+- **Development:** `frontend/.env` or `.env.local` → `VITE_API_URL=http://localhost:3000/api`
+- **Production:** `frontend/.env.production` → `VITE_API_URL=http://api.coliningram.site/api` (or your backend URL)
 
 ---
 
 ## Local Development
 
-### Prerequisites
-- Node.js 18+
-- MySQL (local or use Docker)
-
-### Setup
+**Prerequisites:** Node.js 18+, MySQL
 
 ```bash
-# Clone repository
 git clone https://github.com/adnanahamed66772ndpc/ADNFLIX.git
 cd ADNFLIX
 
-# Install all dependencies
 npm run install:all
-
-# Setup backend .env
 cp backend/.env.example backend/.env
-# Edit backend/.env with your credentials
+# Edit backend/.env (DB_*, JWT_SECRET, SESSION_SECRET, CORS_ORIGINS)
 
-# Run database migrations
-cd backend && npm run migrate
-
-# Start development servers
-cd .. && npm run dev
+cd backend && npm run migrate && cd ..
+npm run dev
 ```
 
-### Development URLs
-- Frontend: http://localhost:8080
-- Backend: http://localhost:3000
-- API: http://localhost:3000/api
-
----
-
-## Deployment
-
-### Docker (Production)
-
-See [Docker (Production)](#docker-production) below.
-
----
-
-## Features
-
-### User Features
-- User registration & login
-- Browse movies & TV series
-- Search titles
-- Watchlist management
-- Continue watching
-- Video playback with custom player
-- Multi-language audio support
-- Subscription plans
-
-### Admin Features
-- Dashboard with analytics
-- Manage titles (CRUD)
-- Manage categories
-- Manage users
-- Upload videos
-- Configure ads
-- Support tickets
-
-### Video Player
-- HLS streaming support
-- Custom controls
-- Skip intro/outro
-- Quality selection
-- Audio track selection
-- Fullscreen mode
-- Progress tracking
-- Ad integration (pre-roll, mid-roll)
-
----
-
-## Security
-
-- JWT authentication
-- Password hashing (bcrypt)
-- Rate limiting
-- CORS protection
-- Helmet security headers
-- SQL injection prevention
-- XSS protection
-
----
-
-## Scripts
-
-### Root
-```bash
-npm run dev          # Run frontend & backend
-npm run build        # Build frontend
-npm start            # Start backend (production)
-npm run install:all  # Install all dependencies
-```
-
-### Backend
-```bash
-npm start           # Production server
-npm run dev         # Development with hot reload
-npm run migrate     # Run database migrations
-```
-
-### Frontend
-```bash
-npm run dev         # Development server
-npm run build       # Production build
-npm run preview     # Preview production build
-```
-
----
-
-## Troubleshooting
-
-### CORS Errors
-- Check `CORS_ORIGINS` in backend `.env`
-- Ensure frontend URL is whitelisted
-
-### Database Connection Failed
-- Verify MySQL credentials in `.env`: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-- Ensure user has privileges on the database
-
-### 404 on Page Refresh (Frontend)
-- Add `.htaccess` rewrite rules
-- Or configure server for SPA routing
-
-### Video Not Playing
-- Check video URL is accessible
-- Verify video format (MP4, HLS)
-- Check browser console for errors
-
-### Port Already in Use
-```bash
-# Windows
-Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
-
-# Linux/Mac
-kill $(lsof -t -i:3000)
-```
-
----
-
-## Android app
-
-The repo includes **`android.zip`** – the Android (Kotlin) app source. To build:
-
-1. Unzip: `unzip android.zip`
-2. Open the `android` folder in Android Studio
-3. Set your API base URL in the app config and build
-
----
-
-## License
-
-ISC License
+- Frontend: http://localhost:8080  
+- Backend: http://localhost:3000  
+- API: http://localhost:3000/api  
 
 ---
 
 ## Docker (Production)
 
-The **full app** runs in Docker: database, backend, and frontend in one stack.
-
-- **db**: MySQL 8.4 (no host ports; internal only)
-- **backend**: Node.js API (migrations run automatically on startup)
-- **web**: Nginx serves the frontend and proxies `/api` and `/health` to the backend
-
-### Start (Docker)
-
-From the project root:
+Full stack: **db** (MySQL 8.4), **backend** (Node + migrations + seed admin), **web** (Nginx + frontend).
 
 ```bash
 docker compose up -d --build
 ```
 
-This starts all three services. Migrations run automatically when the backend starts. To re-run migrations manually:
+- Frontend: http://YOUR_SERVER_IP/
+- API: http://YOUR_SERVER_IP/api
+- Health: http://YOUR_SERVER_IP/health
+
+Migrations run on backend startup. Optional manual run:
 
 ```bash
 docker compose exec backend node src/migrations/runMigrations.js
 ```
 
-### URLs
+**Before production:** set `JWT_SECRET` and `SESSION_SECRET` in `docker-compose.yml` (min 32 chars). Video files: `./storage/videos` on host.
 
-- Frontend: `http://YOUR_SERVER_IP/`
-- API health: `http://YOUR_SERVER_IP/health`
-- API: `http://YOUR_SERVER_IP/api`
+---
 
-### Notes
+## Features
 
-- **Secrets**: change `JWT_SECRET` and `SESSION_SECRET` in `docker-compose.yml` (min 32 chars).
-- **Videos storage**: persisted to `./storage/videos` on the host.
+- **Users:** Register, login (email or username), profile, change password, watchlist, continue watching, subscription plans.
+- **Admin:** Default user `admin`/`admin`; dashboard, titles/categories/users, video upload, ads, support tickets.
+- **Player:** HLS, custom controls, progress, audio tracks, ads (pre/mid/post roll).
+
+---
+
+## Scripts
+
+| Where   | Command | Description |
+|---------|---------|-------------|
+| Root    | `npm run install:all` | Install frontend + backend deps |
+| Root    | `npm run dev`         | Run frontend + backend |
+| Root    | `npm run build`       | Build frontend |
+| Backend | `npm start`           | Production server |
+| Backend | `npm run dev`         | Dev with watch |
+| Backend | `npm run migrate`     | Run migrations |
+| Frontend| `npm run dev`         | Vite dev server |
+| Frontend| `npm run build`       | Production build |
 
 ---
 
 ## CI/CD (GitHub Actions)
 
-On every **push to `main`**:
+On **push to `main`**:
 
-1. **Check**: install deps, lint frontend, build frontend. If any step fails, the workflow stops.
-2. **Deploy** (optional): if checks pass and deploy secrets are set, the workflow SSHs to your server and runs `git pull`, `docker compose pull`, `docker compose up -d --build`, then migrations.
+1. **Check:** install deps, lint frontend, build frontend.
+2. **Deploy (optional):** if secrets are set, SSH to server and run `git pull`, `docker compose up -d --build`, migrations.
 
-### Enable automatic deploy
-
-1. In your **production server**: clone the repo and run `docker compose up -d` once. Note the path (e.g. `~/STEMFLIX` or `/var/www/STEMFLIX`).
-2. In **GitHub**: repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add:
-   - **`DEPLOY_HOST`**: server IP or hostname (e.g. `123.45.67.89`).
-   - **`DEPLOY_USER`**: SSH user (e.g. `root` or `deploy`).
-   - **`SSH_PRIVATE_KEY`**: full contents of the private key that can SSH into the server (no passphrase, or use an agent).
-   - **`DEPLOY_PATH`** (optional): path to the app on the server (e.g. `/var/www/STEMFLIX`). Default is `~/STEMFLIX`.
-
-3. Push to `main`. The **Check** job runs every time; **Deploy** runs only when all checks pass and these secrets exist.
-
-### CI only (no deploy)
-
-If you do **not** add the deploy secrets, only the check job runs (lint + build). Deploy is skipped.
+**Secrets (optional):** `DEPLOY_HOST`, `DEPLOY_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`. If not set, only the check job runs.
 
 ---
 
-## Author
+## Android App
 
-ADNFLIX Team
+The repo includes **`android.zip`** (Kotlin/Compose). Unzip, open in Android Studio, set the API base URL, and build.
+
+---
+
+## Troubleshooting
+
+- **CORS:** Add your frontend URL to `CORS_ORIGINS` in backend `.env`.
+- **DB:** Check `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and user privileges.
+- **503 / ESM:** Backend is CommonJS; ensure no `"type": "module"` in `backend/package.json` if using cPanel/LiteSpeed.
+- **Port in use:** Change `PORT` in backend or stop the process using the port.
+
+---
+
+## License
+
+ISC
+
+---
 
 ## Repository
 
