@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Code, Lock, ChevronDown, ChevronRight, Copy, Check, Smartphone, Server, Key, Film, CreditCard, MessageSquare, FileText, Layers, Play, Video, List, Wallet } from 'lucide-react';
+import { Code, Lock, ChevronDown, ChevronRight, Copy, Check, Smartphone, Server, Key, Film, CreditCard, MessageSquare, FileText, Layers, Play, Video, List, Wallet, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -988,6 +988,48 @@ const APIDocs = () => {
     { id: 'config', label: 'Config', icon: Wallet, endpoints: staticDataEndpoints, description: 'Plans & payment methods (static)' },
   ];
 
+  const downloadEndpointsAsMarkdown = () => {
+    const base = apiBaseUrl.replace(/\/api\/?$/, '') || window.location.origin;
+    const lines: string[] = [
+      '# ADNFLIX API Endpoints',
+      '',
+      '## Base URL',
+      '',
+      '```',
+      base,
+      '```',
+      '',
+      'API prefix: `/api` — full base for endpoints: `' + base + '/api`',
+      '',
+      '---',
+      ''
+    ];
+    apiSections.forEach((section) => {
+      lines.push('## ' + section.label);
+      lines.push('');
+      lines.push(section.description + '.');
+      lines.push('');
+      section.endpoints.forEach((ep: EndpointProps) => {
+        lines.push('### `' + ep.method + '` ' + ep.path);
+        lines.push('');
+        lines.push(ep.description + (ep.auth ? ' **(Auth required)**' : '') + '.');
+        if (ep.notes) lines.push('**Note:** ' + ep.notes);
+        lines.push('');
+        lines.push('**Full URL:** `' + base + ep.path + '`');
+        lines.push('');
+      });
+      lines.push('---');
+      lines.push('');
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'adnflix-api-endpoints.md';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -1183,8 +1225,16 @@ POST /api/tickets { subject, message }`} language="javascript" />
             {/* API Endpoints by Section */}
             <Card>
               <CardHeader>
-                <CardTitle>API Endpoints</CardTitle>
-                <CardDescription>Detailed documentation for all endpoints</CardDescription>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle>API Endpoints</CardTitle>
+                    <CardDescription>Detailed documentation for all endpoints</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={downloadEndpointsAsMarkdown}>
+                    <Download className="w-4 h-4" />
+                    Download as .md
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="auth" className="w-full">
