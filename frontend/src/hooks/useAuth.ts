@@ -73,6 +73,12 @@ export function useAuth(): UseAuthReturn {
     // Check for existing session/token
     const initAuth = async () => {
       try {
+        // Skip /auth/me when no token to avoid 401 in console for guests
+        const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('auth_token');
+        if (!hasToken) {
+          setIsLoading(false);
+          return;
+        }
         const userData = await fetchUserData();
         if (userData) {
           setUser(userData);
