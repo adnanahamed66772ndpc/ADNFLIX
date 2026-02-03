@@ -15,10 +15,11 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Editor and IDE
 .vscode/*
 !.vscode/extensions.json
 .idea
+.cursor
 .DS_Store
 *.suo
 *.ntvs*
@@ -50,14 +51,15 @@ gradle-app.setting
 # Environment – never commit real secrets
 .env
 .env.bak
-*.bak
 .env.local
 .env.*.local
 backend/.env
+backend/.env.production
 frontend/.env
 !.env.example
-!.env.production
+!frontend/.env.production
 !.env.production.example
+*.bak
 
 # OS files
 Thumbs.db
