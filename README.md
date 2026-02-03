@@ -298,6 +298,13 @@ After that, each push to `main` triggers a deploy. You can also run the workflow
 - **502 / connection refused on /api:** Ensure **web** and **backend** are on the same Compose network (default). Restart: `docker compose restart backend web`.
 - **Port 80 in use:** The web container uses `127.0.0.1:8080:80` by default so host Nginx can bind to 80. If you need the app on port 80 without host Nginx, change to `"80:80"` and stop Nginx or use a different host port.
 
+### Security (scan findings)
+
+- **HTTP security headers:** The frontend Nginx config adds `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, and `Permissions-Policy`. Rebuild the web image to apply.
+- **Host Nginx:** Add the same headers (and optionally `Strict-Transport-Security`) in your host Nginx server block for HTTPS. Keep Nginx and the OS updated to avoid "Nginx EOL" / version findings.
+- **SSH (port 22):** Findings like "SSH auth methods", "SHA-1 HMAC" are about the VPS, not this repo. Harden SSH on the server (e.g. disable password auth, use keys only; tighten `sshd_config` if you want to disable SHA-1 HMAC).
+- **WAF / TLS / DNS / RDAP:** Informational or handled by your host/domain (e.g. Certbot for TLS, DNS at your registrar).
+
 ---
 
 ## Features
