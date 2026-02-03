@@ -126,9 +126,9 @@ export default {
         "overlay-gradient": "linear-gradient(90deg, hsl(var(--background)) 0%, transparent 50%)",
       },
       boxShadow: {
-        "card": "0 8px 32px hsl(0 0% 0% / 0.4)",
+        "card": "0 8px 32px hsla(0, 0%, 0%, 0.4)",
         "glow": "0 0 60px hsl(var(--primary) / 0.3)",
-        "poster": "0 4px 20px hsl(0 0% 0% / 0.6)",
+        "poster": "0 4px 20px hsla(0, 0%, 0%, 0.6)",
       },
       transitionDuration: {
         "fast": "150ms",
