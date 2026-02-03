@@ -80,37 +80,123 @@ In Docker, the default admin is created automatically on first backend start (se
 
 ## API Endpoints
 
+Base URL: `/api` (e.g. `https://api.coliningram.site/api`). Auth required: send `Authorization: Bearer <token>` or use session. **Admin** = admin role required.
+
+### Health
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check (no `/api` prefix) |
+
 ### Auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/auth/register` | Register |
 | POST | `/api/auth/login` | Login (email or username) |
-| POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/me` | Current user |
-| PUT | `/api/auth/profile` | Update profile |
-| PATCH | `/api/auth/password` | Change password |
+| POST | `/api/auth/logout` | Logout (auth) |
+| GET | `/api/auth/me` | Current user (auth) |
+| PUT | `/api/auth/profile` | Update profile (auth) |
+| PATCH | `/api/auth/password` | Change password (auth) |
 
 ### Titles
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/titles` | List titles |
-| GET | `/api/titles/:id` | Title by ID |
-| GET | `/api/titles/featured` | Featured |
-| GET | `/api/titles/trending` | Trending |
-| GET | `/api/titles/search?q=` | Search |
+| GET | `/api/titles` | List all titles (public) |
+| GET | `/api/titles/:id` | Title by ID (public) |
+| POST | `/api/titles` | Create title (admin) |
+| PUT | `/api/titles/:id` | Update title (admin) |
+| DELETE | `/api/titles/:id` | Delete title (admin) |
+| POST | `/api/titles/:titleId/seasons` | Add season (admin) |
+| DELETE | `/api/titles/seasons/:seasonId` | Delete season (admin) |
+| POST | `/api/titles/seasons/:seasonId/episodes` | Add episode (admin) |
+| DELETE | `/api/titles/episodes/:episodeId` | Delete episode (admin) |
 
-### Categories, Watchlist, Playback, Config
+### Categories
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/categories` | List categories |
-| GET | `/api/categories/:id/titles` | Titles by category |
-| GET/POST/DELETE | `/api/watchlist` | Watchlist |
-| GET | `/api/playback/:titleId` | Playback info |
-| POST | `/api/playback/progress` | Update progress |
-| GET | `/api/playback/continue` | Continue watching |
-| GET | `/api/videos/:filename` | Stream video |
-| GET | `/api/config/plans` | Subscription plans |
-| GET | `/api/config/payment-methods` | Payment methods |
+| GET | `/api/categories` | List categories (public) |
+| GET | `/api/categories/:id` | Category by ID (public) |
+| POST | `/api/categories` | Create category (admin) |
+| PUT | `/api/categories/:id` | Update category (admin) |
+| DELETE | `/api/categories/:id` | Delete category (admin) |
+
+### Watchlist
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/watchlist` | Get watchlist (auth) |
+| POST | `/api/watchlist` | Add to watchlist (auth) |
+| DELETE | `/api/watchlist/:titleId` | Remove from watchlist (auth) |
+
+### Playback
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/playback` | All playback progress / continue watching (auth) |
+| POST | `/api/playback` | Update playback progress (auth) |
+| GET | `/api/playback/:titleId` | Progress for a title (auth) |
+| GET | `/api/playback/movie/:titleId` | Movie progress (auth) |
+| DELETE | `/api/playback/movie/:titleId` | Delete movie progress (auth) |
+| GET | `/api/playback/series/:titleId` | Series progress (auth) |
+| DELETE | `/api/playback/series/:titleId` | Delete series progress (auth) |
+
+### Videos & audio
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/videos/:filename` | Stream video (public) |
+| GET | `/api/videos` | List videos (admin) |
+| POST | `/api/videos/upload` | Upload video (admin) |
+| DELETE | `/api/videos/:filename` | Delete video (admin) |
+| GET | `/api/videos/audio/:filename` | Stream audio (public) |
+| POST | `/api/videos/audio/upload` | Upload audio (admin) |
+
+### Transactions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/transactions` | List transactions (auth) |
+| POST | `/api/transactions` | Create transaction (auth) |
+| POST | `/api/transactions/:transactionId/approve` | Approve (admin) |
+| POST | `/api/transactions/:transactionId/reject` | Reject (admin) |
+
+### Admin (users)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/users` | List users (admin) |
+| PUT | `/api/admin/users/:userId/role` | Update user role (admin) |
+| PUT | `/api/admin/users/:userId/subscription` | Update subscription (admin) |
+| DELETE | `/api/admin/users/:userId` | Delete user (admin) |
+
+### Ads
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/ads/settings` | Ad settings (public) |
+| GET | `/api/ads/videos/active` | Active ad videos (public) |
+| POST | `/api/ads/impressions` | Track impression (optional auth) |
+| PUT | `/api/ads/settings` | Update ad settings (admin) |
+| GET | `/api/ads/videos` | List ad videos (admin) |
+| POST | `/api/ads/videos` | Add ad video (admin) |
+| PUT | `/api/ads/videos/:id` | Update ad video (admin) |
+| DELETE | `/api/ads/videos/:id` | Delete ad video (admin) |
+
+### Tickets (support)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tickets` | List my tickets (auth) |
+| GET | `/api/tickets/:id` | Ticket by ID (auth) |
+| POST | `/api/tickets` | Create ticket (auth) |
+| PUT | `/api/tickets/:id` | Update ticket (admin) |
+| POST | `/api/tickets/:id/replies` | Add reply (auth) |
+
+### Pages (CMS)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/pages/:key` | Page content by key (public) |
+| GET | `/api/pages` | List all pages (admin) |
+| PUT | `/api/pages/:key` | Update page content (admin) |
+
+### Config
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/config` | All config (plans, payment methods, app version) (public) |
+| GET | `/api/config/plans` | Subscription plans (public) |
+| GET | `/api/config/payment-methods` | Payment methods (public) |
 
 ---
 
