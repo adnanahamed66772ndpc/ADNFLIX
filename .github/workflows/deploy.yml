@@ -14,6 +14,21 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "::error::Missing secret VPS_HOST. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.VPS_USER }}" ]; then
+            echo "::error::Missing secret VPS_USER. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::Missing secret SSH_PRIVATE_KEY. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Secrets OK. Deploying..."
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
