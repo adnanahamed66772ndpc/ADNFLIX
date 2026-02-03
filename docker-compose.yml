@@ -1,3 +1,4 @@
+# Optional: use .env from deploy.sh or set ADNFLIX_* vars before running
 services:
   db:
     image: mysql:8.4
@@ -5,12 +6,12 @@ services:
     environment:
       MYSQL_DATABASE: adnflix
       MYSQL_USER: adnflix
-      MYSQL_PASSWORD: "adnflix_password_change_me"
-      MYSQL_ROOT_PASSWORD: "root_password_change_me"
+      MYSQL_PASSWORD: "${ADNFLIX_MYSQL_PASSWORD:-adnflix_password_change_me}"
+      MYSQL_ROOT_PASSWORD: "${ADNFLIX_MYSQL_ROOT_PASSWORD:-root_password_change_me}"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_password_change_me"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${ADNFLIX_MYSQL_ROOT_PASSWORD:-root_password_change_me}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,15 +31,15 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: adnflix
-      DB_PASSWORD: "adnflix_password_change_me"
+      DB_PASSWORD: "${ADNFLIX_MYSQL_PASSWORD:-adnflix_password_change_me}"
       DB_NAME: adnflix
 
-      # SECURITY (set strong values in real production)
-      JWT_SECRET: CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS
-      SESSION_SECRET: CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS
+      # SECURITY (set via deploy.sh or .env)
+      JWT_SECRET: "${ADNFLIX_JWT_SECRET:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}"
+      SESSION_SECRET: "${ADNFLIX_SESSION_SECRET:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}"
 
-      # CORS: allow Docker (localhost) and production frontend
-      CORS_ORIGINS: "http://localhost,http://127.0.0.1,http://coliningram.site,http://www.coliningram.site"
+      # CORS (set via deploy.sh or .env)
+      CORS_ORIGINS: "${ADNFLIX_CORS_ORIGINS:-http://localhost,http://127.0.0.1}"
     volumes:
       # Persist uploaded videos (adjust host path if needed)
       - ./storage/videos:/app/storage/videos

@@ -48,6 +48,7 @@ gradle-app.setting
 .gradletasknamecache
 
 # Environment – never commit real secrets
+alldetails.txt
 .env
 .env.local
 .env.*.local

@@ -179,7 +179,27 @@ Deploy the full app (database, backend, frontend) with Docker Compose v2. No hos
 - Docker and Docker Compose v2 installed on the server.
 - Port **80** free for the web container (and optionally **3000** if you need direct backend access on the host).
 
-### Step-by-step
+### One-command deploy (`deploy.sh`)
+
+Put your production settings in one place and run:
+
+1. **Edit the CONFIG at the top of `deploy.sh`** (or set env vars and run it):
+
+   - `DOMAIN` – e.g. `coliningram.site` (used for CORS and printed URLs).
+   - `JWT_SECRET`, `SESSION_SECRET` – min 32 chars; generate with `openssl rand -base64 48`.
+   - `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` – optional; change from defaults if you want.
+   - `CORS_ORIGINS` – optional; defaults to `http://localhost`, `http://DOMAIN`, `http://www.DOMAIN`.
+
+2. **Run the script** (creates `.env`, then runs `docker compose up -d --build`):
+
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+   The script creates a root `.env` (ignored by git) so Compose gets your values. Frontend, backend, and health URLs are printed at the end.
+
+### Step-by-step (manual)
 
 1. **Clone the repo on the server**
 
