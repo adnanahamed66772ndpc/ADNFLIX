@@ -171,12 +171,12 @@ Deploy the full app (database, backend, frontend) with Docker Compose v2. No hos
 |-----------|----------------------|------|
 | **db**    | `mysql:8.4`          | MySQL 8.4. No ports exposed on host; only backend can connect. |
 | **backend** | Built from `./backend` | Node.js API. Runs migrations then `seedAdmin.js` (creates `admin`/`admin` if missing), then starts server. Exposed only on **127.0.0.1:3000** (localhost). |
-| **web**   | Built from `./frontend` | Nginx: serves the built React app and proxies `/api` and `/health` to the backend. Exposed on **port 80**. |
+| **web**   | Built from `./frontend` | Nginx: serves the built React app and proxies `/api` and `/health` to the backend. Exposed on **127.0.0.1:8080** so host Nginx can use port 80. |
 
 ### Prerequisites
 
 - Docker and Docker Compose v2 installed on the server.
-- Port **80** free for the web container (and optionally **3000** if you need direct backend access on the host).
+- Port **80** for host Nginx (proxies to frontend at 127.0.0.1:8080 and API at 127.0.0.1:3000). Port **8080** = frontend container.
 
 ### One-command deploy (`deploy.sh`)
 
@@ -270,17 +270,18 @@ Put your production settings in one place and run:
 
 ### Reverse proxy (optional)
 
-If you put Nginx or Caddy in front of Docker:
+If you put Nginx or Caddy on the host in front of Docker:
 
-- Point your domain to the host; proxy `http://HOST:80` to the **web** container.
-- Backend is only on `127.0.0.1:3000`; the **web** container already proxies `/api` and `/health` to the backend, so the browser only talks to the **web** container on port 80.
+- The **web** container is bound to **127.0.0.1:8080** so host Nginx can use port 80. In Nginx: `proxy_pass http://127.0.0.1:8080;` for the frontend.
+- For the API subdomain, proxy to the backend: `proxy_pass http://127.0.0.1:3000;` (server_name e.g. `api.yourdomain.com`).
+- The **web** container already proxies `/api` and `/health` to the backend, so if you only proxy to the web container, the browser only talks to one origin.
 
 ### Troubleshooting Docker
 
 - **MySQL not healthy:** Check `docker compose logs db`. Ensure no other MySQL is using the same data dir. For a clean start: `docker compose down -v` then `docker compose up -d --build` (this deletes DB data).
 - **Backend exits:** Check `docker compose logs backend`. Verify DB credentials in `docker-compose.yml` match the **db** service (e.g. `DB_HOST=db`, same passwords).
 - **502 / connection refused on /api:** Ensure **web** and **backend** are on the same Compose network (default). Restart: `docker compose restart backend web`.
-- **Port 80 in use:** Change the web port in `docker-compose.yml`, e.g. `"8080:80"`, and use http://YOUR_SERVER_IP:8080/.
+- **Port 80 in use:** The web container uses `127.0.0.1:8080:80` by default so host Nginx can bind to 80. If you need the app on port 80 without host Nginx, change to `"80:80"` and stop Nginx or use a different host port.
 
 ---
 

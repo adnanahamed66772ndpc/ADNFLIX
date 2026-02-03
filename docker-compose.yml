@@ -52,8 +52,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: adnflix-web
+    # Bind to 8080 so host Nginx can use port 80 (proxy_pass http://127.0.0.1:8080)
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
     depends_on:
       - backend
 
