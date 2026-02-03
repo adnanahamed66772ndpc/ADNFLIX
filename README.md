@@ -276,6 +276,21 @@ If you put Nginx or Caddy on the host in front of Docker:
 - For the API subdomain, proxy to the backend: `proxy_pass http://127.0.0.1:3000;` (server_name e.g. `api.yourdomain.com`).
 - The **web** container already proxies `/api` and `/health` to the backend, so if you only proxy to the web container, the browser only talks to one origin.
 
+### CI/CD (GitHub Actions)
+
+On every **push to `main`**, a workflow SSHs into your VPS, pulls the latest code, and runs `docker compose up -d --build` so frontend and backend are updated automatically.
+
+**One-time setup**
+
+1. On the VPS: clone the repo to `/opt/ADNFLIX`, run `./deploy.sh` once to create `.env` (and start containers).
+2. In GitHub: repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add:
+   - **`VPS_HOST`** – your VPS IP or hostname (e.g. `vps1.example.com`).
+   - **`VPS_USER`** – SSH user (e.g. `root`).
+   - **`SSH_PRIVATE_KEY`** – full contents of the private key used to SSH to the VPS (e.g. paste from `~/.ssh/id_rsa` or your deploy key).
+3. If SSH is not on port 22: add secret **`VPS_PORT`** and in `.github/workflows/deploy.yml` add under the step: `port: ${{ secrets.VPS_PORT }}`.
+
+After that, each push to `main` triggers a deploy. You can also run the workflow manually: **Actions** → **Deploy to Production** → **Run workflow**.
+
 ### Troubleshooting Docker
 
 - **MySQL not healthy:** Check `docker compose logs db`. Ensure no other MySQL is using the same data dir. For a clean start: `docker compose down -v` then `docker compose up -d --build` (this deletes DB data).
