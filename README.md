@@ -27,8 +27,6 @@ A full-stack video streaming platform with React frontend, Node.js backend, and 
 
 ```
 STEMFLIX/
-├── .github/workflows/
-│   └── ci-cd.yml              # CI (lint, build) + optional SSH deploy
 ├── backend/
 │   ├── migrations/            # SQL schema (001–005)
 │   │   ├── 001_initial_schema.sql
@@ -305,17 +303,6 @@ If you put Nginx or Caddy in front of Docker:
 | Backend | `npm run migrate`     | Run migrations |
 | Frontend| `npm run dev`         | Vite dev server |
 | Frontend| `npm run build`       | Production build |
-
----
-
-## CI/CD (GitHub Actions)
-
-On **push to `main`**:
-
-1. **Check:** install deps, lint frontend, build frontend.
-2. **Deploy (optional):** if secrets are set, SSH to server and run `git pull`, `docker compose up -d --build`, migrations.
-
-**Secrets (optional):** `DEPLOY_HOST`, `DEPLOY_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`. If not set, only the check job runs.
 
 ---
 
