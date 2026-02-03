@@ -28,7 +28,7 @@ A full-stack video streaming platform with React frontend, Node.js backend, and 
 ```
 STEMFLIX/
 ├── backend/
-│   ├── migrations/            # SQL schema (001–005)
+│   ├── migrations/            # SQL schema 001–005 (ordered, no duplicates; 005 idempotent)
 │   │   ├── 001_initial_schema.sql
 │   │   ├── 002_add_categories.sql
 │   │   ├── 003_separate_progress_tables.sql
