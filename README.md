@@ -69,7 +69,8 @@ STEMFLIX/
 
 ## Default Admin
 
-- **Username:** `admin@admin.com`
+- **Username:** `admin`
+- **Email:** `admin@admin.com`
 - **Password:** `admin123` (change after first login)
 - **Change password:** Log in → Account → Password tab.
 

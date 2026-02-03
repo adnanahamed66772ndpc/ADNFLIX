@@ -45,7 +45,7 @@ async function seed() {
     [roleId, userId, 'admin']
   );
 
-  console.log('Default admin user created: username=admin, password=admin (change after first login).');
+  console.log('Default admin user created: username=admin, password=admin123 (change after first login).');
   await pool.end();
 }
 
