@@ -26,8 +26,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Android (entire folder ignored on main; tracked only on android branch)
-android/
+# Android
 android/.gradle/
 android/build/
 android/app/build/
