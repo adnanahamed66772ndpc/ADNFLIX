@@ -10,9 +10,13 @@ import { useTitlesContext } from '@/contexts/TitlesContext';
 import { Button } from '@/components/ui/button';
 
 const Browse = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { titles, isLoading, searchTitles } = useTitlesContext();
+
+  const clearFilters = () => {
+    setSearchParams({});
+  };
 
   // Filter states from URL params
   const searchQuery = searchParams.get('search') || '';
