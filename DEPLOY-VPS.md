@@ -110,6 +110,12 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+**If you see** `'/usr/bin/env: sh\r': No such file or directory` **:** the script has Windows line endings. Fix with:
+```bash
+sed -i 's/\r$//' deploy.sh
+./deploy.sh
+```
+
 This will:
 
 - Create a `.env` file (used by Docker Compose)
