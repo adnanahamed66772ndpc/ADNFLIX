@@ -1,0 +1,63 @@
+# Optional: use .env from deploy.sh or set ADNFLIX_* vars before running
+services:
+  db:
+    image: mysql:8.4
+    container_name: adnflix-db
+    environment:
+      MYSQL_DATABASE: adnflix
+      MYSQL_USER: adnflix
+      MYSQL_PASSWORD: "${ADNFLIX_MYSQL_PASSWORD:-adnflix_password_change_me}"
+      MYSQL_ROOT_PASSWORD: "${ADNFLIX_MYSQL_ROOT_PASSWORD:-root_password_change_me}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${ADNFLIX_MYSQL_ROOT_PASSWORD:-root_password_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adnflix-backend
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      # DB (Docker MySQL service)
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: adnflix
+      DB_PASSWORD: "${ADNFLIX_MYSQL_PASSWORD:-adnflix_password_change_me}"
+      DB_NAME: adnflix
+
+      # SECURITY (set via deploy.sh or .env)
+      JWT_SECRET: "${ADNFLIX_JWT_SECRET:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}"
+      SESSION_SECRET: "${ADNFLIX_SESSION_SECRET:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}"
+
+      # CORS (set via deploy.sh or .env)
+      CORS_ORIGINS: "${ADNFLIX_CORS_ORIGINS:-http://localhost,http://127.0.0.1}"
+    volumes:
+      # Persist uploaded videos (adjust host path if needed)
+      - ./storage/videos:/app/storage/videos
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: adnflix-web
+    # Bind to 8080 so host Nginx can use port 80 (proxy_pass http://127.0.0.1:8080)
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+

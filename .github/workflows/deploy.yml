@@ -1,0 +1,45 @@
+# Deploy ADNFLIX to production VPS on push to main
+# Required GitHub secrets: VPS_HOST, VPS_USER, SSH_PRIVATE_KEY
+# Optional secret: VPS_PORT (if SSH is not on 22, add this secret and uncomment port in the step)
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual run from Actions tab
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "::error::Missing secret VPS_HOST. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.VPS_USER }}" ]; then
+            echo "::error::Missing secret VPS_USER. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::Missing secret SSH_PRIVATE_KEY. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Secrets OK. Deploying..."
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/ADNFLIX || { echo "Directory /opt/ADNFLIX not found"; exit 1; }
+            if [ ! -f .env ]; then echo "Warning: .env not found. Run ./deploy.sh once on the VPS to create it."; fi
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose --env-file .env up -d --build
+            echo "Deploy finished. Frontend and backend updated."
