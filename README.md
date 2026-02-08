@@ -437,6 +437,22 @@ ISC
 
 ---
 
+
+
+STEP BY STEP 
+Step	What you do
+1	SSH into VPS
+2	apt update && apt upgrade -y
+3	Install Docker + Compose
+4	Clone repo to /opt/ADNFLIX
+5	sed -i 's/\r$//' deploy.sh and chmod +x deploy.sh
+6	Generate 2 secrets with openssl rand -base64 48
+7	Edit deploy.sh (domain, secrets, MySQL, CORS)
+8	./deploy.sh
+9	docker compose ps (and logs if needed)
+10	Install Nginx, add config, enable site, reload Nginx
+11	Open site in browser, login as admin
+
 ## Repository
 
 https://github.com/adnanahamed66772ndpc/ADNFLIX

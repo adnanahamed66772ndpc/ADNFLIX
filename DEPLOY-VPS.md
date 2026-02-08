@@ -262,9 +262,9 @@ To deploy automatically when you push to `main`:
 
 2. **On GitHub:**  
    Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add:
-   - **`VPS_HOST`** – VPS IP or hostname (e.g. `vps.example.com`)
+   - **`VPS_HOST`** – VPS IP or hostname (e.g. `coliningram.site` or `1.2.3.4`)
    - **`VPS_USER`** – SSH user (e.g. `root` or `ubuntu`)
-   - **`SSH_PRIVATE_KEY`** – Full contents of the private key you use to SSH (e.g. `cat ~/.ssh/id_rsa` on your laptop, paste here)
+   - **`SSH_PRIVATE_KEY`** – The **private** key (not the `.pub` file). On your PC: `cat ~/.ssh/id_rsa` (or `id_ed25519`) and paste the **entire** output, including the lines `-----BEGIN ... KEY-----` and `-----END ... KEY-----`. No extra spaces at the top or bottom.
 
 3. **Optional:** If SSH is not on port 22, add secret **`VPS_PORT`** and in `.github/workflows/deploy.yml` add the `port` option to the SSH step (see comments in that file).
 
@@ -290,3 +290,11 @@ After that, every push to `main` will SSH into the VPS, pull the latest code, an
 - **Backend exits:** `docker compose logs backend`. Check that DB credentials in `.env` match the `db` service.
 - **502 on /api:** Ensure Nginx proxies to `http://127.0.0.1:3000` and that `adnflix-backend` is running: `docker compose ps`.
 - **CORS errors in browser:** Add your frontend URL (e.g. `https://yourdomain.com`) to `CORS_ORIGINS` in `deploy.sh`, then re-run `./deploy.sh`.
+- **GitHub Actions: "ssh: no key found" or "handshake failed":** The `SSH_PRIVATE_KEY` secret must be the **private key you use on your PC/laptop to SSH into the VPS** (not a key from the VPS). On your **PC** run `cat ~/.ssh/id_rsa` (or `id_ed25519`) and paste the full output into the secret. The VPS has the matching public key in `authorized_keys`; it does not have this private key.
+- **VPS: "git@github.com: Permission denied (publickey)" when running git:** The VPS is trying to pull from GitHub over SSH but has no key (or the wrong one). Easiest fix: use HTTPS instead of SSH for the repo on the VPS so no key is needed:
+  ```bash
+  cd /opt/ADNFLIX
+  git remote set-url origin https://github.com/adnanahamed66772ndpc/ADNFLIX.git
+  git fetch origin main && git reset --hard origin/main
+  ```
+  If you prefer SSH from the VPS, add the VPS public key (e.g. `cat /root/.ssh/github_deploy.pub`) as a **Deploy key** in the repo (Settings → Deploy keys), then run: `git config core.sshCommand "ssh -i /root/.ssh/github_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"`.
