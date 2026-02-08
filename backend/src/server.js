@@ -229,9 +229,10 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API route not found' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 ADNFLIX Server running on port ${PORT}`);
+// Start server - bind to 0.0.0.0 so reverse proxy (Nginx) can reach us in Docker
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 ADNFLIX Server running on http://${HOST}:${PORT}`);
   console.log(`📍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 });
 
