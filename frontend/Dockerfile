@@ -1,13 +1,16 @@
+# syntax=docker/dockerfile:1
 FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 COPY . .
 # Use same-origin API in Docker (nginx proxies /api to backend)
 ENV VITE_API_URL=
-RUN npm run build
+RUN --mount=type=cache,target=/root/.npm \
+    npm run build
 
 
 FROM nginx:1.27-alpine AS runner
