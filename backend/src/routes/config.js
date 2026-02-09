@@ -102,19 +102,19 @@ const paymentMethods = [
   }
 ];
 
-// Get subscription plans
+// Get subscription plans (public, no auth)
 router.get('/plans', (req, res) => {
-  res.json(subscriptionPlans);
+  res.status(200).json(subscriptionPlans);
 });
 
-// Get payment methods
+// Get payment methods (public, no auth)
 router.get('/payment-methods', (req, res) => {
-  res.json(paymentMethods);
+  res.status(200).json(paymentMethods);
 });
 
-// Get all config in one call (for initial app load)
+// Get all config in one call (public, no auth - for initial app load)
 router.get('/', (req, res) => {
-  res.json({
+  res.status(200).json({
     plans: subscriptionPlans,
     paymentMethods: paymentMethods,
     appVersion: '1.0.0',
