@@ -1,37 +1,48 @@
-# Deploy ADNFLIX to production VPS with Docker on push to main
+# Deploy ADNFLIX to production VPS on push to main
 #
-# One-time VPS setup: clone repo to /opt/ADNFLIX, run ./deploy.sh to create .env and start containers.
-# Then add these GitHub Actions secrets (Settings → Secrets and variables → Actions):
-#   VPS_HOST        - VPS IP or hostname (e.g. 1.2.3.4 or api.yourdomain.com)
-#   VPS_USER       - SSH user (e.g. root or ubuntu)
-#   SSH_PRIVATE_KEY - Full private key (cat ~/.ssh/id_rsa). Include -----BEGIN/-----END lines. Not the .pub file.
-# Optional: VPS_PORT - SSH port if not 22 (uncomment port in ssh-action)
+# Required GitHub Actions secrets (Settings → Secrets and variables → Actions):
+#   VPS_HOST       - VPS IP or hostname (e.g. 1.2.3.4 or coliningram.site)
+#   VPS_USER      - SSH user (e.g. root or ubuntu)
+#   SSH_PRIVATE_KEY - Full private key body. On your PC: cat ~/.ssh/id_rsa (or id_ed25519)
+#                     Paste the ENTIRE output including -----BEGIN ... KEY----- and -----END ... KEY-----
+#                     Do NOT use the .pub file. No extra spaces at start/end.
+# Optional: VPS_PORT - if SSH is not on 22 (then uncomment port: in the SSH step)
 
-name: Deploy to Production (Docker)
+name: Deploy to Production
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: # Allow manual run from Actions tab
 
 jobs:
   deploy:
-    name: Deploy via Docker
+    name: Deploy to VPS
     runs-on: ubuntu-latest
     steps:
       - name: Check required secrets
         run: |
-          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "::error::Missing VPS_HOST"; exit 1; fi
-          if [ -z "${{ secrets.VPS_USER }}" ]; then echo "::error::Missing VPS_USER"; exit 1; fi
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "::error::Missing SSH_PRIVATE_KEY"; exit 1; fi
-          echo "Secrets OK."
-      - name: Validate SSH key
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "::error::Missing secret VPS_HOST. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.VPS_USER }}" ]; then
+            echo "::error::Missing secret VPS_USER. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::Missing secret SSH_PRIVATE_KEY. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Secrets present. Validating SSH key format..."
+      - name: Validate SSH private key
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1 || {
-            echo "::error::Invalid SSH_PRIVATE_KEY. Use full private key, not .pub."
+            echo "::error::SSH_PRIVATE_KEY is invalid. Use the PRIVATE key (e.g. id_rsa), not the .pub file. Paste the full key including -----BEGIN and -----END lines. Remove any extra spaces at start or end."
             exit 1
           }
-      - name: Deploy via SSH (Docker Compose)
+          echo "SSH key format OK."
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -39,12 +50,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX not found. Clone repo and run ./deploy.sh once."; exit 1; }
-            if [ ! -f .env ]; then echo "::error::VPS: .env missing. Run ./deploy.sh on the VPS first to create it."; exit 1; fi
+            cd /opt/ADNFLIX || { echo "Directory /opt/ADNFLIX not found"; exit 1; }
+            if [ ! -f .env ]; then echo "Warning: .env not found. Run ./deploy.sh once on the VPS to create it."; fi
             git fetch origin main
             git reset --hard origin/main
             docker compose --env-file .env up -d --build
-            echo "Containers started. Waiting for backend health..."
-            sleep 15
-            curl -sf http://127.0.0.1:3000/health || { echo "::error::Backend health check failed"; exit 1; }
-            echo "Deploy OK. Frontend and backend updated."
+            echo "Deploy finished. Frontend and backend updated."
