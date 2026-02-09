@@ -6,6 +6,7 @@
 #   VPS_USER       - SSH user (e.g. root or ubuntu)
 #   SSH_PRIVATE_KEY - Full private key (cat ~/.ssh/id_rsa). Include -----BEGIN/-----END lines. Not the .pub file.
 # Optional: VPS_PORT - SSH port if not 22 (uncomment port in ssh-action)
+# If job stays "Queued" 1–2 min: GitHub is busy. Cancel and re-run from Actions tab, or wait.
 
 name: Deploy to Production (Docker)
 
@@ -19,18 +20,13 @@ jobs:
     name: Deploy via Docker
     runs-on: ubuntu-latest
     steps:
-      - name: Check required secrets
+      - name: Validate secrets and SSH key
         run: |
-          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "::error::Missing VPS_HOST"; exit 1; fi
-          if [ -z "${{ secrets.VPS_USER }}" ]; then echo "::error::Missing VPS_USER"; exit 1; fi
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "::error::Missing SSH_PRIVATE_KEY"; exit 1; fi
+          [ -z "${{ secrets.VPS_HOST }}" ] && { echo "::error::Missing VPS_HOST"; exit 1; }
+          [ -z "${{ secrets.VPS_USER }}" ] && { echo "::error::Missing VPS_USER"; exit 1; }
+          [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] && { echo "::error::Missing SSH_PRIVATE_KEY"; exit 1; }
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-keygen -y -f /dev/stdin >/dev/null 2>&1 || { echo "::error::Invalid SSH_PRIVATE_KEY"; exit 1; }
           echo "Secrets OK."
-      - name: Validate SSH key
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1 || {
-            echo "::error::Invalid SSH_PRIVATE_KEY. Use full private key, not .pub."
-            exit 1
-          }
       - name: Deploy via SSH (Docker Compose)
         uses: appleboy/ssh-action@v1.0.3
         with:
