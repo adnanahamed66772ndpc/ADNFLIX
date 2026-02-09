@@ -150,14 +150,34 @@ In your browser: **http://yourdomain.com** (or **http://YOUR_VPS_IP**).
 
 **Admin login:** username `admin`, password `admin123`. Change it after first login (Account → Password).
 
+**Payment numbers (website & app):** In Admin → Settings you can set bKash/Nagad/Rocket send-money numbers. They appear on the website Subscription page and in the mobile app Payment details. The app must use your deployed API URL (e.g. `https://api.yourdomain.com/api`) in `adnflix_andoird/lib/core/constants.dart` as `apiBaseUrl` so it loads these numbers.
+
+---
+
+## Deploy via GitHub Actions (Docker)
+
+After the VPS is set up (Steps 1–6 above), you can deploy on every push to `main` using GitHub Actions.
+
+1. **One-time:** In the repo go to **Settings → Secrets and variables → Actions**. Add:
+   - **VPS_HOST** — Your VPS IP or hostname (e.g. `coliningram.site` or `1.2.3.4`)
+   - **VPS_USER** — SSH user (e.g. `root` or `ubuntu`)
+   - **SSH_PRIVATE_KEY** — Full private key: run `cat ~/.ssh/id_rsa` (or `id_ed25519`) on your PC and paste the entire output, including `-----BEGIN ... KEY-----` and `-----END ... KEY-----`. Do **not** use the `.pub` file.
+
+2. **First time on VPS:** Ensure the repo is cloned at `/opt/ADNFLIX` and you have run `./deploy.sh` once so `.env` exists. The workflow uses `docker compose --env-file .env up -d --build` and will fail if `.env` is missing.
+
+3. **Deploy:** Push to `main` or run the workflow manually from the **Actions** tab (**Deploy to Production (Docker)** → **Run workflow**).
+
+The workflow pulls latest code, rebuilds and starts the Docker containers (db, backend, web), runs backend migrations (including payment method settings), and checks the backend health endpoint.
+
 ---
 
 ## Quick reference
 
 | Task            | Command |
 |-----------------|--------|
-| Update deploy   | `cd /opt/ADNFLIX && git pull origin main && ./deploy.sh` |
-| Backend logs   | `docker compose logs -f backend` |
+| Update deploy   | `cd /opt/ADNFLIX && git pull origin main && docker compose --env-file .env up -d --build` |
+| Or use GitHub   | Push to `main` (workflow runs automatically) |
+| Backend logs    | `docker compose logs -f backend` |
 | Restart backend | `docker compose restart backend` |
 | Stop all       | `docker compose down` |
 
