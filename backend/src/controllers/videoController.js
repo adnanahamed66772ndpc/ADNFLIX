@@ -1,8 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const { PassThrough } = require('stream');
 const https = require('https');
 const http = require('http');
 const { VIDEO_STORAGE_PATH } = require('../config/storage.js');
+
+// Buffer size between remote upstream and client (smooths out slow/bursty remote streams)
+const PROXY_STREAM_BUFFER_SIZE = 2 * 1024 * 1024; // 2MB
 
 /**
  * Video Controller - No Encoding/Conversion Policy
@@ -38,10 +42,15 @@ async function streamProxy(req, res, next) {
       return res.status(403).json({ error: 'Video URL is not allowed for proxy' });
     }
 
-    const range = req.headers.range;
+    let range = req.headers.range;
     const options = new URL(decodedUrl);
     const client = options.protocol === 'https:' ? https : http;
-    // Forward only Range and Accept so upstream gets clean requests (avoids buffering/redirect issues)
+    // Request a larger first chunk when client asks for "bytes=0-" so remote URL streams buffer faster
+    const firstChunkSize = PROXY_STREAM_BUFFER_SIZE;
+    if (range && range.trim().toLowerCase() === 'bytes=0-') {
+      range = `bytes=0-${firstChunkSize - 1}`;
+    }
+    // Forward only Range and Accept so upstream gets clean requests
     const requestHeaders = {
       'Accept': req.headers.accept || 'video/*,*/*;q=0.9',
       'User-Agent': req.headers['user-agent'] || 'ADNFLIX-StreamProxy/1.0',
@@ -64,7 +73,13 @@ async function streamProxy(req, res, next) {
       if (proxyRes.headers['content-length']) headers['Content-Length'] = proxyRes.headers['content-length'];
       if (proxyRes.headers['content-range']) headers['Content-Range'] = proxyRes.headers['content-range'];
       res.writeHead(status, headers);
-      proxyRes.pipe(res);
+      // Use a buffering stream so remote URL data is fed to the client smoothly (buffer-free playback)
+      const bufferStream = new PassThrough({ highWaterMark: PROXY_STREAM_BUFFER_SIZE });
+      proxyRes.pipe(bufferStream).pipe(res);
+      req.on('abort', () => {
+        bufferStream.destroy();
+        proxyRes.destroy();
+      });
     });
 
     proxyReq.on('error', (err) => {
