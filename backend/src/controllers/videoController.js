@@ -41,8 +41,11 @@ async function streamProxy(req, res, next) {
     const range = req.headers.range;
     const options = new URL(decodedUrl);
     const client = options.protocol === 'https:' ? https : http;
-    const requestHeaders = { ...req.headers };
-    requestHeaders.host = options.host;
+    // Forward only Range and Accept so upstream gets clean requests (avoids buffering/redirect issues)
+    const requestHeaders = {
+      'Accept': req.headers.accept || 'video/*,*/*;q=0.9',
+      'User-Agent': req.headers['user-agent'] || 'ADNFLIX-StreamProxy/1.0',
+    };
     if (range) requestHeaders.range = range;
 
     const proxyReq = client.request(decodedUrl, { headers: requestHeaders }, (proxyRes) => {
@@ -96,6 +99,9 @@ async function uploadVideo(req, res, next) {
   }
 }
 
+// Larger chunks = fewer read syscalls and smoother streaming (reduces buffering)
+const STREAM_HIGH_WATER_MARK = 512 * 1024; // 512KB
+
 // Serve video with range support
 async function serveVideo(req, res, next) {
   try {
@@ -114,6 +120,7 @@ async function serveVideo(req, res, next) {
       '.3gp': 'video/3gpp', '.m4v': 'video/x-m4v'
     };
     const contentType = contentTypes[ext] || 'video/mp4';
+    const streamOpts = { highWaterMark: STREAM_HIGH_WATER_MARK };
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
@@ -123,7 +130,7 @@ async function serveVideo(req, res, next) {
         return res.end();
       }
       const actualEnd = Math.min(end, fileSize - 1);
-      const file = fs.createReadStream(filePath, { start, end: actualEnd });
+      const file = fs.createReadStream(filePath, { start, end: actualEnd, ...streamOpts });
       res.writeHead(206, {
         'Content-Range': `bytes ${start}-${actualEnd}/${fileSize}`,
         'Accept-Ranges': 'bytes',
@@ -141,7 +148,7 @@ async function serveVideo(req, res, next) {
         'Cache-Control': 'public, max-age=31536000',
         'Access-Control-Allow-Origin': '*'
       });
-      fs.createReadStream(filePath).pipe(res);
+      fs.createReadStream(filePath, streamOpts).pipe(res);
     }
   } catch (error) {
     next(error);

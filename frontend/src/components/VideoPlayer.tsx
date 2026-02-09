@@ -121,17 +121,17 @@ const VideoPlayer = ({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        // Optimize chunk loading for better streaming performance
-        maxBufferLength: 30, // Maximum buffer length in seconds
-        maxMaxBufferLength: 60, // Maximum max buffer length
-        maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer
+        // Buffer more to reduce "Buffering..." pauses
+        maxBufferLength: 60, // Buffer up to 60 seconds ahead
+        maxMaxBufferLength: 120, // Allow up to 2 minutes
+        maxBufferSize: 80 * 1000 * 1000, // 80MB max buffer
         maxBufferHole: 0.5, // Max buffer hole in seconds
-        highBufferWatchdogPeriod: 2, // Check buffer every 2 seconds
-        nudgeOffset: 0.1, // Nudge offset for buffer management
-        nudgeMaxRetry: 3, // Max retries for buffer nudging
-        fragLoadingTimeOut: 20, // Fragment loading timeout
-        manifestLoadingTimeOut: 10, // Manifest loading timeout
-        levelLoadingTimeOut: 10, // Level loading timeout
+        highBufferWatchdogPeriod: 2,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 5, // More retries for unstable networks
+        fragLoadingTimeOut: 30, // Longer timeout for slow connections
+        manifestLoadingTimeOut: 15,
+        levelLoadingTimeOut: 15,
       });
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -207,13 +207,10 @@ const VideoPlayer = ({
 
       // Direct video source (MP4, WebM, MKV, AVI, MOV, etc.)
       // Configure for chunked streaming using HTTP range requests
-      // Note: Browser support varies by format
-      // MP4 and WebM have best support, MKV/AVI/MOV may work depending on codecs
       video.src = src;
       
-      // Configure preload for efficient chunked loading
-      // 'metadata' loads only metadata, allowing browser to request chunks as needed
-      video.preload = 'metadata';
+      // Preload more data to reduce buffering during playback (browser will use range requests)
+      video.preload = 'auto';
       
       const handleCanPlay = () => {
         applyStartTimeOnce();
@@ -659,11 +656,9 @@ const VideoPlayer = ({
         onClick={togglePlay}
         playsInline
         crossOrigin="anonymous"
-        preload="metadata"
+        preload="auto"
         controls={false}
         muted={false}
-        // Optimize for chunked streaming
-        // Browser will automatically use HTTP range requests for chunked loading
       />
 
       {/* Loading Spinner */}
