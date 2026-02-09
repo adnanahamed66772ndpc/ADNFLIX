@@ -70,10 +70,11 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow video/image loading
 }));
 
-// Rate limiting - protect against abuse
+// Rate limiting - protect against abuse (mobile app + web need enough headroom)
+const apiLimit = parseInt(process.env.RATE_LIMIT_MAX_PER_15MIN || (isProduction ? '500' : '1000'), 10);
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 100 : 1000, // Limit requests per IP
+  max: apiLimit,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
