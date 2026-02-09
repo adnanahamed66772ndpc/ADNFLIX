@@ -115,5 +115,37 @@ async function deleteUser(req, res, next) {
   }
 }
 
+// Get payment method settings (admin only) - for admin panel to edit numbers
+async function getPaymentMethods(req, res, next) {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id, name, number, updated_at FROM payment_method_settings ORDER BY id'
+    );
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+}
 
-module.exports = { getUsers, updateUserRole, updateUserSubscription, deleteUser };
+// Update payment method (admin only) - set number/name for website and app
+async function updatePaymentMethod(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { name, number } = req.body;
+
+    const [result] = await pool.execute(
+      'UPDATE payment_method_settings SET name = COALESCE(?, name), number = COALESCE(?, number), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name || null, number != null ? String(number).trim() : null, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Payment method not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { getUsers, updateUserRole, updateUserSubscription, deleteUser, getPaymentMethods, updatePaymentMethod };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { subscriptionPlans, paymentMethods, SubscriptionPlan, PaymentMethod } from '@/data/subscriptionData';
+import { subscriptionPlans, paymentMethods as defaultPaymentMethods, SubscriptionPlan, PaymentMethod } from '@/data/subscriptionData';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useTransactions } from '@/hooks/useTransactions';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import apiClient from '@/api/client';
 
 type Step = 'plans' | 'payment' | 'confirm' | 'success';
 
@@ -32,6 +33,22 @@ const Subscription = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(defaultPaymentMethods);
+
+  useEffect(() => {
+    apiClient.get<Array<{ id: string; name: string; number: string }>>('/config/payment-methods')
+      .then((fromApi) => {
+        if (fromApi?.length) {
+          setPaymentMethods(
+            defaultPaymentMethods.map((d) => {
+              const api = fromApi.find((a) => a.id === d.id);
+              return api ? { ...d, name: api.name, number: api.number || d.number } : d;
+            })
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     if (plan.id === 'free') {
