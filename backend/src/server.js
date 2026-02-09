@@ -4,7 +4,6 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const dotenv = require('dotenv');
 const path = require('path');
-const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
 // Load environment variables
@@ -69,33 +68,6 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow video/image loading
 }));
-
-// Rate limiting - protect against abuse (mobile app + web need enough headroom)
-const apiLimit = parseInt(process.env.RATE_LIMIT_MAX_PER_15MIN || (isProduction ? '500' : '1000'), 10);
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: apiLimit,
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for video/audio streaming
-    return req.path.startsWith('/api/videos/') || req.path.includes('/audio/');
-  }
-});
-
-// Apply rate limiting to API routes
-app.use('/api/', apiLimiter);
-
-// Stricter rate limit for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 10 : 100, // 10 attempts per 15 min in production
-  message: { error: 'Too many login attempts, please try again later.' }
-});
-
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
 
 // Body parsers with size limits
 app.use(express.json({ limit: '10mb' }));
