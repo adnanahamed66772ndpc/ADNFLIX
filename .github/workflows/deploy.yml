@@ -1,6 +1,12 @@
 # Deploy ADNFLIX to production VPS on push to main
-# Required GitHub secrets: VPS_HOST, VPS_USER, SSH_PRIVATE_KEY
-# Optional secret: VPS_PORT (if SSH is not on 22, add this secret and uncomment port in the step)
+#
+# Required GitHub Actions secrets (Settings → Secrets and variables → Actions):
+#   VPS_HOST       - VPS IP or hostname (e.g. 1.2.3.4 or coliningram.site)
+#   VPS_USER      - SSH user (e.g. root or ubuntu)
+#   SSH_PRIVATE_KEY - Full private key body. On your PC: cat ~/.ssh/id_rsa (or id_ed25519)
+#                     Paste the ENTIRE output including -----BEGIN ... KEY----- and -----END ... KEY-----
+#                     Do NOT use the .pub file. No extra spaces at start/end.
+# Optional: VPS_PORT - if SSH is not on 22 (then uncomment port: in the SSH step)
 
 name: Deploy to Production
 
@@ -28,7 +34,14 @@ jobs:
             echo "::error::Missing secret SSH_PRIVATE_KEY. Add it in repo Settings → Secrets and variables → Actions."
             exit 1
           fi
-          echo "Secrets OK. Deploying..."
+          echo "Secrets present. Validating SSH key format..."
+      - name: Validate SSH private key
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-keygen -y -f /dev/stdin > /dev/null 2>&1 || {
+            echo "::error::SSH_PRIVATE_KEY is invalid. Use the PRIVATE key (e.g. id_rsa), not the .pub file. Paste the full key including -----BEGIN and -----END lines. Remove any extra spaces at start or end."
+            exit 1
+          }
+          echo "SSH key format OK."
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
