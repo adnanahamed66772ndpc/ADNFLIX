@@ -850,12 +850,19 @@ const APIDocs = () => {
     }
   ];
 
-  // Static Data Endpoints (Subscription Plans & Payment Methods)
+  // Config: Plans & Payment Methods (payment numbers from DB, editable in Admin → Settings)
   const staticDataEndpoints: EndpointProps[] = [
     {
       method: 'GET',
+      path: '/api/config',
+      description: 'Get full config: plans, payment methods (with numbers), app version. Used by website and app on load.',
+      responseExample: { plans: [], paymentMethods: [], appVersion: '1.0.0', maintenanceMode: false },
+      notes: 'Payment method numbers are set in Admin → Settings → Payment numbers and shown on website Subscription page and in the app.'
+    },
+    {
+      method: 'GET',
       path: '/api/config/plans',
-      description: 'Get available subscription plans (Static data - can be hardcoded in app).',
+      description: 'Get subscription plans (Free, With Ads, Premium).',
       responseExample: [
         {
           id: 'free',
@@ -907,7 +914,7 @@ const APIDocs = () => {
     {
       method: 'GET',
       path: '/api/config/payment-methods',
-      description: 'Get available payment methods (Static data - can be hardcoded in app).',
+      description: 'Get payment methods with send-money numbers. Numbers are set in Admin → Settings → Payment numbers (website & app).',
       responseExample: [
         {
           id: 'bkash',
@@ -985,7 +992,7 @@ const APIDocs = () => {
     { id: 'ads', label: 'Ads', icon: Video, endpoints: adsEndpoints, description: 'Advertisement playback' },
     { id: 'tickets', label: 'Support', icon: MessageSquare, endpoints: ticketsEndpoints, description: 'Help & support tickets' },
     { id: 'pages', label: 'Pages', icon: FileText, endpoints: pagesEndpoints, description: 'Terms, privacy, help pages' },
-    { id: 'config', label: 'Config', icon: Wallet, endpoints: staticDataEndpoints, description: 'Plans & payment methods (static)' },
+    { id: 'config', label: 'Config', icon: Wallet, endpoints: staticDataEndpoints, description: 'Plans & payment methods. Payment numbers editable in Admin → Settings.' },
   ];
 
   const downloadEndpointsAsMarkdown = () => {

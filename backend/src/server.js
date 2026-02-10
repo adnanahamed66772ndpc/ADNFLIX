@@ -170,7 +170,7 @@ if (isProduction && process.env.SERVE_FRONTEND === 'true') {
   }
 }
 
-// Root route - API info
+// Root route - API info (all endpoints)
 app.get('/', (req, res) => {
   res.json({
     name: 'ADNFLIX API',
@@ -183,7 +183,23 @@ app.get('/', (req, res) => {
       categories: '/api/categories',
       videos: '/api/videos',
       watchlist: '/api/watchlist',
-      playback: '/api/playback'
+      playback: '/api/playback',
+      transactions: '/api/transactions',
+      config: '/api/config',
+      plans: '/api/config/plans',
+      paymentMethods: '/api/config/payment-methods',
+      pages: '/api/pages',
+      terms: '/api/pages/terms',
+      privacy: '/api/pages/privacy',
+      tickets: '/api/tickets',
+      admin: '/api/admin',
+      ads: '/api/ads'
+    },
+    features: {
+      plans: 'Subscription plans (GET /api/config/plans or /api/config)',
+      paymentNumbers: 'Payment method numbers for website & app (GET /api/config/payment-methods). Admin: PUT /api/admin/config/payment-methods/:id',
+      termsAndPrivacy: 'Terms of Service, Privacy Policy (GET /api/pages). Admin: edit in Admin → Settings',
+      support: 'Support tickets (GET/POST /api/tickets). Admin: view in Admin → Tickets'
     }
   });
 });
