@@ -170,26 +170,14 @@ if (isProduction && process.env.SERVE_FRONTEND === 'true') {
   }
 }
 
-// Explicitly block /all from ever exposing endpoint list (e.g. api.domain.com/all)
-app.get('/all', (req, res) => {
-  res.status(404).json({
-    name: 'ADNFLIX API',
-    status: 'running',
-    error: 'Not found'
-  });
-});
-
-// Root route - API info (endpoint list only in dev or when EXPOSE_API_INDEX=true)
+// Root route - API info (all endpoints)
 app.get('/', (req, res) => {
-  const exposeEndpoints = !isProduction || process.env.EXPOSE_API_INDEX === 'true';
-  const body = {
+  res.json({
     name: 'ADNFLIX API',
     version: '1.0.0',
     status: 'running',
-    docs: '/health'
-  };
-  if (exposeEndpoints) {
-    body.endpoints = {
+    docs: '/health',
+    endpoints: {
       auth: '/api/auth',
       titles: '/api/titles',
       categories: '/api/categories',
@@ -206,15 +194,14 @@ app.get('/', (req, res) => {
       tickets: '/api/tickets',
       admin: '/api/admin',
       ads: '/api/ads'
-    };
-    body.features = {
+    },
+    features: {
       plans: 'Subscription plans (GET /api/config/plans or /api/config)',
       paymentNumbers: 'Payment method numbers for website & app (GET /api/config/payment-methods). Admin: PUT /api/admin/config/payment-methods/:id',
       termsAndPrivacy: 'Terms of Service, Privacy Policy (GET /api/pages). Admin: edit in Admin → Settings',
       support: 'Support tickets (GET/POST /api/tickets). Admin: view in Admin → Tickets'
-    };
-  }
-  res.json(body);
+    }
+  });
 });
 
 // Error handling middleware
