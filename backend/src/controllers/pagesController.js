@@ -1,7 +1,19 @@
 const pool = require('../config/database.js');
-const { v4: uuidv4  } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 
-// Get page content by key
+// Default content for terms and privacy (used when page is missing in DB)
+const DEFAULT_PAGES = {
+  terms: {
+    title: 'Terms of Service',
+    content: '<h1>Terms of Service</h1><p>Welcome to ADNFLIX. By accessing or using our service, you agree to these Terms.</p><p>Please use the Admin panel to edit this content.</p>'
+  },
+  privacy: {
+    title: 'Privacy Policy',
+    content: '<h1>Privacy Policy</h1><p>ADNFLIX respects your privacy and protects your personal data.</p><p>Please use the Admin panel to edit this content.</p>'
+  }
+};
+
+// Get page content by key. Creates terms/privacy with defaults if missing.
 async function getPageContent(req, res, next) {
   try {
     const { key } = req.params;
@@ -10,11 +22,28 @@ async function getPageContent(req, res, next) {
       [key]
     );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Page not found' });
+    if (rows.length > 0) {
+      return res.json(rows[0]);
     }
 
-    res.json(rows[0]);
+    // For terms and privacy, create with default content so endpoint always works
+    const defaultPage = DEFAULT_PAGES[key];
+    if (defaultPage) {
+      const id = uuidv4();
+      await pool.execute(
+        'INSERT INTO page_content (id, page_key, title, content) VALUES (?, ?, ?, ?)',
+        [id, key, defaultPage.title, defaultPage.content]
+      );
+      const [newRows] = await pool.execute(
+        'SELECT * FROM page_content WHERE page_key = ?',
+        [key]
+      );
+      if (newRows.length > 0) {
+        return res.json(newRows[0]);
+      }
+    }
+
+    return res.status(404).json({ error: 'Page not found' });
   } catch (error) {
     next(error);
   }
