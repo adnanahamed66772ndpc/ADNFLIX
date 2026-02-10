@@ -935,7 +935,7 @@ const APIDocs = () => {
     {
       method: 'GET',
       path: '/api/config/payment-methods',
-      description: 'Get payment methods with send-money numbers. Numbers are set in Admin → Settings → Payment numbers (website & app).',
+      description: 'Get payment method send-money numbers (bKash, Nagad, Rocket). Set in Admin → Settings; website and mobile use this endpoint so numbers update everywhere.',
       responseExample: [
         {
           id: 'bkash',
@@ -977,7 +977,7 @@ const APIDocs = () => {
           ]
         }
       ],
-      notes: 'Replace 01XXXXXXXXX with actual payment numbers. This is static data you can hardcode in your app.'
+      notes: 'No auth. Use this URL in website and mobile app; when admin updates numbers in Admin panel, all clients get the same data.'
     },
     {
       method: 'GET',

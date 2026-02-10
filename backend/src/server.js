@@ -195,6 +195,12 @@ app.get('/', (req, res) => {
       admin: '/api/admin',
       ads: '/api/ads'
     },
+    paymentNumbers: {
+      endpoint: 'GET /api/config/payment-methods',
+      auth: false,
+      description: 'Payment method send-money numbers (bKash, Nagad, Rocket). Set in Admin → Settings; website and mobile fetch this endpoint so numbers stay in sync everywhere.',
+      adminUpdate: 'PUT /api/admin/config/payment-methods/:id (auth: admin)'
+    },
     features: {
       plans: 'Subscription plans (GET /api/config/plans or /api/config)',
       paymentNumbers: 'Payment method numbers for website & app (GET /api/config/payment-methods). Admin: PUT /api/admin/config/payment-methods/:id',

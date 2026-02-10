@@ -151,7 +151,10 @@ In your browser: **http://yourdomain.com** (or **http://YOUR_VPS_IP**).
 
 **Admin login:** username `admin`, password `admin123`. Change it after first login (Account → Password).
 
-**Payment numbers (website & app):** In Admin → Settings you can set bKash/Nagad/Rocket send-money numbers. They appear on the website Subscription page and in the mobile app Payment details. The app must use your deployed API URL (e.g. `https://api.yourdomain.com/api`) in `adnflix_andoird/lib/core/constants.dart` as `apiBaseUrl` so it loads these numbers.
+**Payment numbers (website & app):** In Admin → Settings you can set bKash/Nagad/Rocket send-money numbers. They appear on the website Subscription page and in the mobile app. Everyone uses the same endpoint so updates in the admin panel apply everywhere:
+- **Endpoint (no auth):** `GET /api/config/payment-methods` — website and mobile call this to show current numbers.
+- **Admin update:** In Admin → Settings → Payment numbers, edit name/number per method; changes are saved and returned by the endpoint above.
+- **Mobile:** Set your deployed API base (e.g. `https://yourdomain.com/api`) in the app (e.g. `adnflix_android/lib/core/constants.dart` as `apiBaseUrl`) so the app loads these numbers.
 
 ---
 
@@ -181,6 +184,7 @@ The workflow pulls latest code, rebuilds and starts the Docker containers (db, b
 | Backend logs    | `docker compose logs -f backend` |
 | Restart backend | `docker compose restart backend` |
 | Stop all       | `docker compose down` |
+| Payment numbers | Set in Admin → Settings. Endpoint for website & app: `GET /api/config/payment-methods` (no auth). |
 
 ---
 
