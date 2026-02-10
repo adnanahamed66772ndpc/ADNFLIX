@@ -285,4 +285,39 @@ async function updateProfile(req, res, next) {
   }
 }
 
-module.exports = { register, login, logout, getCurrentUser, updateProfile, changePassword };
+// Check if current user has a valid (active paid) subscription
+async function checkSubscription(req, res, next) {
+  try {
+    const userId = req.userId;
+    const [profiles] = await pool.execute(
+      'SELECT subscription_plan, subscription_expires_at FROM profiles WHERE user_id = ?',
+      [userId]
+    );
+    if (profiles.length === 0) {
+      return res.status(404).json({ error: 'User not found', valid: false });
+    }
+    const plan = profiles[0].subscription_plan || 'free';
+    const expiresAt = profiles[0].subscription_expires_at ? new Date(profiles[0].subscription_expires_at) : null;
+    const now = new Date();
+    // Valid = paid plan (not free) and (no expiry or expiry in future)
+    const valid = plan !== 'free' && (!expiresAt || expiresAt > now);
+    let message = 'free';
+    if (plan === 'free') {
+      message = 'Free plan';
+    } else if (expiresAt && expiresAt <= now) {
+      message = 'Subscription expired';
+    } else {
+      message = expiresAt ? `Active until ${expiresAt.toISOString().split('T')[0]}` : 'Active (no expiry)';
+    }
+    res.json({
+      valid,
+      plan,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
+      message,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { register, login, logout, getCurrentUser, updateProfile, changePassword, checkSubscription };

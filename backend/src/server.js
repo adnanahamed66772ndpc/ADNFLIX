@@ -179,6 +179,7 @@ app.get('/', (req, res) => {
     docs: '/health',
     endpoints: {
       auth: '/api/auth',
+      subscriptionCheck: '/api/auth/subscription/check',
       titles: '/api/titles',
       categories: '/api/categories',
       videos: '/api/videos',

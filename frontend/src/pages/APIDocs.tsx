@@ -257,6 +257,19 @@ const APIDocs = () => {
       notes: 'Returns 401 if not authenticated. subscriptionPlan can be: free, with-ads, or premium.'
     },
     {
+      method: 'GET',
+      path: '/api/auth/subscription/check',
+      description: 'Check if the current user has a valid (active paid) subscription.',
+      auth: true,
+      responseExample: {
+        valid: true,
+        plan: 'premium',
+        expiresAt: '2025-12-31T23:59:59.000Z',
+        message: 'Active until 2025-12-31'
+      },
+      notes: 'valid is true only when plan is not "free" and (expiresAt is null or in the future). Use this to gate premium content or features.'
+    },
+    {
       method: 'PUT',
       path: '/api/auth/profile',
       description: 'Update current user profile (display name and avatar).',

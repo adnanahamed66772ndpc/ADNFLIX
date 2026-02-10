@@ -93,6 +93,7 @@ Base URL: `/api` (e.g. `https://api.coliningram.site/api`). Auth required: send 
 | POST | `/api/auth/login` | Login (email or username) |
 | POST | `/api/auth/logout` | Logout (auth) |
 | GET | `/api/auth/me` | Current user (auth) |
+| GET | `/api/auth/subscription/check` | Check subscription valid (auth) |
 | PUT | `/api/auth/profile` | Update profile (auth) |
 | PATCH | `/api/auth/password` | Change password (auth) |
 
@@ -455,3 +456,5 @@ Step	What you do
 ## Repository
 
 https://github.com/adnanahamed66772ndpc/ADNFLIX
+
+a 
