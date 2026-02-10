@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getDisplayApiUrl } from '@/api/client';
 
 interface EndpointProps {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   description: string;
   auth?: boolean;
@@ -27,6 +27,7 @@ const MethodBadge = ({ method }: { method: string }) => {
     GET: 'bg-green-500/20 text-green-500 border-green-500/30',
     POST: 'bg-blue-500/20 text-blue-500 border-blue-500/30',
     PUT: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30',
+    PATCH: 'bg-amber-500/20 text-amber-500 border-amber-500/30',
     DELETE: 'bg-red-500/20 text-red-500 border-red-500/30',
   };
   return (
@@ -283,6 +284,21 @@ const APIDocs = () => {
         message: 'Profile updated successfully'
       },
       notes: 'Both fields are optional. Only provided fields will be updated.'
+    },
+    {
+      method: 'PATCH',
+      path: '/api/auth/password',
+      description: 'Change current user password.',
+      auth: true,
+      requestBody: {
+        currentPassword: 'oldPassword123',
+        newPassword: 'newSecurePassword456'
+      },
+      responseExample: {
+        success: true,
+        message: 'Password updated successfully'
+      },
+      notes: 'newPassword must be 6–128 characters.'
     }
   ];
 
@@ -291,10 +307,14 @@ const APIDocs = () => {
     {
       method: 'GET',
       path: '/api/titles',
-      description: 'Get all titles (movies and series). Includes seasons and episodes for series.',
+      description: 'Get all titles (movies and series) with optional filters. Includes seasons and episodes for series.',
       queryParams: [
         { name: 'type', type: 'string', description: 'Filter by "movie" or "series"' },
-        { name: 'search', type: 'string', description: 'Search by title name' }
+        { name: 'genre', type: 'string', description: 'Filter by genre (e.g. action, drama)' },
+        { name: 'year', type: 'number', description: 'Filter by release year' },
+        { name: 'language', type: 'string', description: 'Filter by language' },
+        { name: 'trending', type: 'string', description: 'Only trending: "1" or "true"' },
+        { name: 'newRelease', type: 'string', description: 'Only new releases: "1" or "true"' }
       ],
       responseExample: [
         {
@@ -372,7 +392,7 @@ const APIDocs = () => {
     {
       method: 'GET',
       path: '/api/titles/:id',
-      description: 'Get a specific title by ID with full details including seasons and episodes.',
+      description: 'Get movie or series detail by ID. Full details including seasons and episodes (for series). Use for title/movie detail page.',
       pathParams: [
         { name: 'id', type: 'string', description: 'Title UUID' }
       ],
@@ -461,9 +481,50 @@ const APIDocs = () => {
       responseExample: {
         id: 'uuid-string',
         name: 'Science',
+        slug: 'science',
+        type: 'genre',
         description: 'Science documentaries and educational content',
         created_at: '2024-01-01T00:00:00.000Z'
       }
+    },
+    {
+      method: 'POST',
+      path: '/api/categories',
+      description: 'Create a category (admin only).',
+      auth: true,
+      requestBody: {
+        name: 'Science',
+        slug: 'science',
+        type: 'genre',
+        description: 'Science content'
+      },
+      responseExample: {
+        id: 'uuid-string',
+        name: 'Science',
+        slug: 'science',
+        type: 'genre',
+        description: 'Science content'
+      }
+    },
+    {
+      method: 'PUT',
+      path: '/api/categories/:id',
+      description: 'Update a category (admin only).',
+      auth: true,
+      pathParams: [{ name: 'id', type: 'string', description: 'Category UUID' }],
+      requestBody: {
+        name: 'Science & Tech',
+        description: 'Updated description'
+      },
+      responseExample: { success: true }
+    },
+    {
+      method: 'DELETE',
+      path: '/api/categories/:id',
+      description: 'Delete a category (admin only).',
+      auth: true,
+      pathParams: [{ name: 'id', type: 'string', description: 'Category UUID' }],
+      responseExample: { success: true }
     }
   ];
 
@@ -710,6 +771,33 @@ const APIDocs = () => {
         id: 'new-transaction-uuid'
       },
       notes: 'planId options: with-ads (99 BDT/month), premium (299 BDT/month). Payment methods: bKash, Nagad, Rocket.'
+    },
+    {
+      method: 'POST',
+      path: '/api/transactions/:transactionId/approve',
+      description: 'Approve a pending transaction (admin only).',
+      auth: true,
+      pathParams: [
+        { name: 'transactionId', type: 'string', description: 'Transaction UUID' }
+      ],
+      responseExample: {
+        success: true
+      }
+    },
+    {
+      method: 'POST',
+      path: '/api/transactions/:transactionId/reject',
+      description: 'Reject a pending transaction (admin only).',
+      auth: true,
+      pathParams: [
+        { name: 'transactionId', type: 'string', description: 'Transaction UUID' }
+      ],
+      requestBody: {
+        reason: 'Invalid transaction ID'
+      },
+      responseExample: {
+        success: true
+      }
     }
   ];
 
@@ -832,6 +920,24 @@ const APIDocs = () => {
       }
     },
     {
+      method: 'PUT',
+      path: '/api/tickets/:id',
+      description: 'Update ticket status or priority (admin only).',
+      auth: true,
+      pathParams: [
+        { name: 'id', type: 'string', description: 'Ticket UUID' }
+      ],
+      requestBody: {
+        status: 'resolved',
+        priority: 'high'
+      },
+      responseExample: {
+        success: true,
+        message: 'Ticket updated successfully'
+      },
+      notes: 'Admin only. status: open, in_progress, resolved, closed. Either status or priority can be sent.'
+    },
+    {
       method: 'POST',
       path: '/api/tickets',
       description: 'Create a new support ticket.',
@@ -870,17 +976,74 @@ const APIDocs = () => {
     {
       method: 'GET',
       path: '/api/pages/:key',
-      description: 'Get static page content (terms, privacy policy, help, etc.).',
+      description: 'Get static page content by key. Keys: terms, privacy, help. No auth. Creates default content if missing.',
       pathParams: [
-        { name: 'key', type: 'string', description: 'Page key: terms, privacy, help, about, faq' }
+        { name: 'key', type: 'string', description: 'Page key: terms, privacy, help' }
       ],
       responseExample: {
-        key: 'terms',
+        id: 'uuid',
+        page_key: 'terms',
         title: 'Terms of Service',
         content: '<h1>Terms of Service</h1><p>Content here...</p>',
         updated_at: '2024-01-01T00:00:00.000Z'
       },
-      notes: 'Content may be in HTML or Markdown format. Render accordingly in your app.'
+      notes: 'Content is HTML. Editable in Admin → Settings → Page Content Management.'
+    },
+    {
+      method: 'GET',
+      path: '/api/pages/terms',
+      description: 'Get Terms of Service page. No auth.',
+      responseExample: {
+        id: 'uuid',
+        page_key: 'terms',
+        title: 'Terms of Service',
+        content: '<h1>Terms of Service</h1><p>...</p>'
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/pages/privacy',
+      description: 'Get Privacy Policy page. No auth.',
+      responseExample: {
+        id: 'uuid',
+        page_key: 'privacy',
+        title: 'Privacy Policy',
+        content: '<h1>Privacy Policy</h1><p>...</p>'
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/pages/help',
+      description: 'Get Help page content. No auth. Editable in Admin → Settings.',
+      responseExample: {
+        id: 'uuid',
+        page_key: 'help',
+        title: 'Help',
+        content: '<h1>Help</h1><p>...</p>'
+      }
+    },
+    {
+      method: 'GET',
+      path: '/api/pages',
+      description: 'List all editable pages (admin only). Returns id, page_key, title, content, updated_at.',
+      auth: true,
+      responseExample: [
+        { id: 'uuid', page_key: 'terms', title: 'Terms of Service', content: '<p>...</p>', updated_at: '2024-01-01T00:00:00.000Z' },
+        { id: 'uuid2', page_key: 'privacy', title: 'Privacy Policy', content: '<p>...</p>', updated_at: '2024-01-01T00:00:00.000Z' },
+        { id: 'uuid3', page_key: 'help', title: 'Help', content: '<p>...</p>', updated_at: '2024-01-01T00:00:00.000Z' }
+      ]
+    },
+    {
+      method: 'PUT',
+      path: '/api/pages/:key',
+      description: 'Update page content (admin only). Creates page if key is new.',
+      auth: true,
+      pathParams: [{ name: 'key', type: 'string', description: 'Page key: terms, privacy, help' }],
+      requestBody: {
+        title: 'Terms of Service',
+        content: '<h1>Terms</h1><p>Updated content...</p>'
+      },
+      responseExample: { success: true, message: 'Page updated successfully' }
     }
   ];
 
@@ -889,9 +1052,23 @@ const APIDocs = () => {
     {
       method: 'GET',
       path: '/api/config',
-      description: 'Get full config: plans, payment methods (with numbers), app version. Used by website and app on load.',
-      responseExample: { plans: [], paymentMethods: [], appVersion: '1.0.0', maintenanceMode: false },
-      notes: 'Payment method numbers are set in Admin → Settings → Payment numbers and shown on website Subscription page and in the app.'
+      description: 'Get full config in one request: plans, payment methods (with numbers), app version, maintenance mode. Use on app launch.',
+      responseExample: {
+        plans: [
+          { id: 'free', name: 'Free', price: 0, interval: 'free', hasAds: false, features: [] },
+          { id: 'with-ads', name: 'Basic', price: 99, interval: 'monthly', hasAds: true, features: [] },
+          { id: 'premium', name: 'Premium', price: 299, interval: 'monthly', hasAds: false, features: [] }
+        ],
+        paymentMethods: [
+          { id: 'bkash', name: 'bKash', number: '01XXXXXXXXX', instructions: [] },
+          { id: 'nagad', name: 'Nagad', number: '01XXXXXXXXX', instructions: [] },
+          { id: 'rocket', name: 'Rocket', number: '01XXXXXXXXX', instructions: [] }
+        ],
+        appVersion: '1.0.0',
+        minAppVersion: '1.0.0',
+        maintenanceMode: false
+      },
+      notes: 'No auth. Payment numbers are set in Admin → Settings and synced to website and app.'
     },
     {
       method: 'GET',
@@ -991,27 +1168,64 @@ const APIDocs = () => {
         }
       ],
       notes: 'No auth. Use this URL in website and mobile app; when admin updates numbers in Admin panel, all clients get the same data.'
+    }
+  ];
+
+  // Admin-only endpoints
+  const adminEndpoints: EndpointProps[] = [
+    {
+      method: 'GET',
+      path: '/api/admin/users',
+      description: 'List all users with profiles and roles (admin only).',
+      auth: true,
+      responseExample: [
+        { id: 'user-uuid', email: 'user@example.com', displayName: 'John', role: 'user', subscriptionPlan: 'free', subscriptionExpiresAt: null }
+      ]
+    },
+    {
+      method: 'PUT',
+      path: '/api/admin/users/:userId/role',
+      description: 'Update user role (admin only).',
+      auth: true,
+      pathParams: [{ name: 'userId', type: 'string', description: 'User UUID' }],
+      requestBody: { role: 'admin' },
+      responseExample: { success: true }
+    },
+    {
+      method: 'PUT',
+      path: '/api/admin/users/:userId/subscription',
+      description: 'Update user subscription plan and expiry (admin only).',
+      auth: true,
+      pathParams: [{ name: 'userId', type: 'string', description: 'User UUID' }],
+      requestBody: { plan: 'premium', expiresAt: '2025-12-31T23:59:59.000Z' },
+      responseExample: { success: true }
+    },
+    {
+      method: 'DELETE',
+      path: '/api/admin/users/:userId',
+      description: 'Delete a user (admin only).',
+      auth: true,
+      pathParams: [{ name: 'userId', type: 'string', description: 'User UUID' }],
+      responseExample: { success: true }
     },
     {
       method: 'GET',
-      path: '/api/config',
-      description: 'Get all configuration data in one request. Recommended for initial app load.',
-      responseExample: {
-        plans: [
-          { id: 'free', name: 'Free', price: 0, '...': '...' },
-          { id: 'with-ads', name: 'Basic', price: 99, '...': '...' },
-          { id: 'premium', name: 'Premium', price: 299, '...': '...' }
-        ],
-        paymentMethods: [
-          { id: 'bkash', name: 'bKash', '...': '...' },
-          { id: 'nagad', name: 'Nagad', '...': '...' },
-          { id: 'rocket', name: 'Rocket', '...': '...' }
-        ],
-        appVersion: '1.0.0',
-        minAppVersion: '1.0.0',
-        maintenanceMode: false
-      },
-      notes: 'Fetch this on app launch to get all config data. Check maintenanceMode to show maintenance screen if needed.'
+      path: '/api/admin/config/payment-methods',
+      description: 'Get payment method settings for editing (admin only).',
+      auth: true,
+      responseExample: [
+        { id: 'bkash', name: 'bKash', number: '01XXXXXXXXX' },
+        { id: 'nagad', name: 'Nagad', number: '01XXXXXXXXX' }
+      ]
+    },
+    {
+      method: 'PUT',
+      path: '/api/admin/config/payment-methods/:id',
+      description: 'Update payment method name/number (admin only).',
+      auth: true,
+      pathParams: [{ name: 'id', type: 'string', description: 'Method id: bkash, nagad, rocket' }],
+      requestBody: { name: 'bKash', number: '01712345678' },
+      responseExample: { success: true }
     }
   ];
 
@@ -1027,6 +1241,7 @@ const APIDocs = () => {
     { id: 'tickets', label: 'Support', icon: MessageSquare, endpoints: ticketsEndpoints, description: 'Help & support tickets' },
     { id: 'pages', label: 'Pages', icon: FileText, endpoints: pagesEndpoints, description: 'Terms, privacy, help pages' },
     { id: 'config', label: 'Config', icon: Wallet, endpoints: staticDataEndpoints, description: 'Plans & payment methods. Payment numbers editable in Admin → Settings.' },
+    { id: 'admin', label: 'Admin', icon: Lock, endpoints: adminEndpoints, description: 'User management and payment settings (admin only)' },
   ];
 
   const downloadEndpointsAsMarkdown = () => {

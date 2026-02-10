@@ -100,8 +100,8 @@ Base URL: `/api` (e.g. `https://api.coliningram.site/api`). Auth required: send 
 ### Titles
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/titles` | List all titles (public) |
-| GET | `/api/titles/:id` | Title by ID (public) |
+| GET | `/api/titles` | List titles with optional filters: `?type=movie|series&genre=&year=&language=&trending=1&newRelease=1` (public) |
+| GET | `/api/titles/:id` | Movie or series detail by ID (public) |
 | POST | `/api/titles` | Create title (admin) |
 | PUT | `/api/titles/:id` | Update title (admin) |
 | DELETE | `/api/titles/:id` | Delete title (admin) |

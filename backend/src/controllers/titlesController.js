@@ -19,22 +19,64 @@ function validateAudioTracks(audioTracks) {
   );
 }
 
-// Get all titles
+// Get all titles (with optional filters: type, genre, year, language, trending, newRelease)
 async function getTitles(req, res, next) {
   try {
+    const { type, genre, year, language, trending, newRelease } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (type && (type === 'movie' || type === 'series')) {
+      conditions.push('type = ?');
+      params.push(type);
+    }
+    if (genre && String(genre).trim()) {
+      conditions.push('(LOWER(genres) LIKE LOWER(CONCAT(\'%\', ?, \'%\')))');
+      params.push(String(genre).trim());
+    }
+    if (year != null && year !== '') {
+      const y = parseInt(year, 10);
+      if (!isNaN(y)) {
+        conditions.push('year = ?');
+        params.push(y);
+      }
+    }
+    if (language && String(language).trim()) {
+      conditions.push('LOWER(language) = LOWER(?)');
+      params.push(String(language).trim());
+    }
+    if (trending === '1' || trending === 'true') {
+      conditions.push('trending = 1');
+    }
+    if (newRelease === '1' || newRelease === 'true') {
+      conditions.push('new_release = 1');
+    }
+
+    const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const [titles] = await pool.execute(
-      'SELECT * FROM titles ORDER BY created_at DESC'
+      `SELECT * FROM titles ${whereClause} ORDER BY created_at DESC`,
+      params
     );
 
-    // Fetch seasons
+    const titleIds = titles.map(t => t.id);
+    if (titleIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch seasons for these titles only
     const [seasons] = await pool.execute(
-      'SELECT * FROM seasons ORDER BY season_number ASC'
+      'SELECT * FROM seasons WHERE title_id IN (?) ORDER BY season_number ASC',
+      [titleIds]
     );
 
-    // Fetch episodes
-    const [episodes] = await pool.execute(
-      'SELECT * FROM episodes ORDER BY episode_number ASC'
-    );
+    const seasonIds = seasons.map(s => s.id);
+    // Fetch episodes for these seasons only
+    const [episodes] = seasonIds.length > 0
+      ? await pool.execute(
+          'SELECT * FROM episodes WHERE season_id IN (?) ORDER BY episode_number ASC',
+          [seasonIds]
+        )
+      : [[], []];
 
     // Map episodes to seasons
     const seasonMap = new Map();
