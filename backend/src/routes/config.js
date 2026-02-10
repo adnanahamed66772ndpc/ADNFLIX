@@ -19,7 +19,7 @@ async function getPaymentMethodsFromDb() {
       return {
         id: r.id,
         name: r.name,
-        number: r.number || '01XXXXXXXXX',
+        number: String(r.number != null && r.number !== '' ? r.number : '01XXXXXXXXX'),
         logo: def.logo,
         color: def.color,
         instructions: def.instructions || []
