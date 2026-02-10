@@ -48,7 +48,13 @@ jobs:
               fi
             fi
             export DOCKER_BUILDKIT=1
-            docker compose --env-file .env up -d $NEED_BUILD
+            # Retry build up to 3 times (Docker Hub can return 502 Bad Gateway)
+            for attempt in 1 2 3; do
+              if docker compose --env-file .env up -d $NEED_BUILD; then break; fi
+              [ $attempt -eq 3 ] && { echo "::error::Docker build/up failed after 3 attempts"; exit 1; }
+              echo "Attempt $attempt failed, retrying in 30s..."
+              sleep 30
+            done
             echo "Waiting for backend health..."
             for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
               curl -sf http://127.0.0.1:3000/health && break
