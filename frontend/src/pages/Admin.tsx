@@ -2084,7 +2084,7 @@ const SettingsTab = () => {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Page Content Management</CardTitle>
-          <CardDescription>Edit Terms of Service and Privacy Policy content</CardDescription>
+          <CardDescription>Edit Help, Terms of Service, and Privacy Policy content. Changes appear on the website immediately.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

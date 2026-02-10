@@ -17,6 +17,7 @@ import Account from "./pages/Account";
 import Watchlist from "./pages/Watchlist";
 import Subscription from "./pages/Subscription";
 import HelpCenter from "./pages/HelpCenter";
+import HelpPage from "./pages/HelpPage";
 import TicketDetail from "./pages/TicketDetail";
 import APIDocs from "./pages/APIDocs";
 import Terms from "./pages/Terms";
@@ -53,7 +54,8 @@ const App = () => (
             <Route path="/account" element={<Account />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/subscription" element={<Subscription />} />
-            <Route path="/help" element={<HelpCenter />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/support" element={<HelpCenter />} />
             <Route path="/ticket/:id" element={<TicketDetail />} />
             <Route path="/docs" element={<APIDocs />} />
             <Route path="/api-docs" element={<APIDocs />} />

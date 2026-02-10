@@ -54,7 +54,7 @@ const TicketDetail = () => {
       setTicket(data);
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to load ticket", variant: "destructive" });
-      navigate('/help');
+      navigate('/support');
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +98,7 @@ const TicketDetail = () => {
       <Navbar />
       <div className="container mx-auto px-4 md:px-6 lg:px-8 py-12">
         <div className="max-w-4xl mx-auto">
-          <Button variant="ghost" onClick={() => navigate('/help')} className="mb-4">
+          <Button variant="ghost" onClick={() => navigate('/support')} className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Help Center
           </Button>

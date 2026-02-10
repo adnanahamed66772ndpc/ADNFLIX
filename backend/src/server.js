@@ -192,6 +192,7 @@ app.get('/', (req, res) => {
       pages: '/api/pages',
       terms: '/api/pages/terms',
       privacy: '/api/pages/privacy',
+      help: '/api/pages/help',
       tickets: '/api/tickets',
       admin: '/api/admin',
       ads: '/api/ads'

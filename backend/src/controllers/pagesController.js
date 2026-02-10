@@ -1,7 +1,7 @@
 const pool = require('../config/database.js');
 const { v4: uuidv4 } = require('uuid');
 
-// Default content for terms and privacy (used when page is missing in DB)
+// Default content for terms, privacy, and help (used when page is missing in DB)
 const DEFAULT_PAGES = {
   terms: {
     title: 'Terms of Service',
@@ -10,10 +10,14 @@ const DEFAULT_PAGES = {
   privacy: {
     title: 'Privacy Policy',
     content: '<h1>Privacy Policy</h1><p>ADNFLIX respects your privacy and protects your personal data.</p><p>Please use the Admin panel to edit this content.</p>'
+  },
+  help: {
+    title: 'Help',
+    content: '<h1>Help</h1><p>Welcome to ADNFLIX Help. Here you can find answers to common questions.</p><p>Edit this content in Admin → Settings → Page Content Management.</p><p>For support tickets, visit the <a href="/support">Help Center</a>.</p>'
   }
 };
 
-// Get page content by key. Creates terms/privacy with defaults if missing.
+// Get page content by key. Creates terms/privacy/help with defaults if missing.
 async function getPageContent(req, res, next) {
   try {
     const { key } = req.params;
@@ -53,7 +57,7 @@ async function getPageContent(req, res, next) {
 async function getAllPages(req, res, next) {
   try {
     const [rows] = await pool.execute(
-      'SELECT id, page_key, title, updated_at, updated_by FROM page_content ORDER BY page_key'
+      'SELECT id, page_key, title, content, updated_at, updated_by FROM page_content ORDER BY page_key'
     );
     res.json(rows);
   } catch (error) {
