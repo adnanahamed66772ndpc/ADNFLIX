@@ -170,6 +170,15 @@ if (isProduction && process.env.SERVE_FRONTEND === 'true') {
   }
 }
 
+// Explicitly block /all from ever exposing endpoint list (e.g. api.domain.com/all)
+app.get('/all', (req, res) => {
+  res.status(404).json({
+    name: 'ADNFLIX API',
+    status: 'running',
+    error: 'Not found'
+  });
+});
+
 // Root route - API info (endpoint list only in dev or when EXPOSE_API_INDEX=true)
 app.get('/', (req, res) => {
   const exposeEndpoints = !isProduction || process.env.EXPOSE_API_INDEX === 'true';
