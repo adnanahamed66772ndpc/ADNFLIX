@@ -55,6 +55,7 @@ Run twice and save each output for the next step:
 
 ```bash
 openssl rand -base64 48
+QHUCn59e4uQDV9/cZpGGtCD1IBmJwD3KTbTMZ7LDYpOYwUFPU0uvJKErCOvSpSHW
 ```
 
 ---
@@ -107,7 +108,7 @@ Paste this (change `yourdomain.com` to your domain or use `_` for IP-only):
 ```nginx
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
+    server_name coliningram.site www.coliningram.site;
 
     location / {
         proxy_pass http://127.0.0.1:8080;

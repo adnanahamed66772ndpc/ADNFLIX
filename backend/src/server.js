@@ -170,14 +170,17 @@ if (isProduction && process.env.SERVE_FRONTEND === 'true') {
   }
 }
 
-// Root route - API info (all endpoints)
+// Root route - API info (endpoint list only in dev or when EXPOSE_API_INDEX=true)
 app.get('/', (req, res) => {
-  res.json({
+  const exposeEndpoints = !isProduction || process.env.EXPOSE_API_INDEX === 'true';
+  const body = {
     name: 'ADNFLIX API',
     version: '1.0.0',
     status: 'running',
-    docs: '/health',
-    endpoints: {
+    docs: '/health'
+  };
+  if (exposeEndpoints) {
+    body.endpoints = {
       auth: '/api/auth',
       titles: '/api/titles',
       categories: '/api/categories',
@@ -194,14 +197,15 @@ app.get('/', (req, res) => {
       tickets: '/api/tickets',
       admin: '/api/admin',
       ads: '/api/ads'
-    },
-    features: {
+    };
+    body.features = {
       plans: 'Subscription plans (GET /api/config/plans or /api/config)',
       paymentNumbers: 'Payment method numbers for website & app (GET /api/config/payment-methods). Admin: PUT /api/admin/config/payment-methods/:id',
       termsAndPrivacy: 'Terms of Service, Privacy Policy (GET /api/pages). Admin: edit in Admin → Settings',
       support: 'Support tickets (GET/POST /api/tickets). Admin: view in Admin → Tickets'
-    }
-  });
+    };
+  }
+  res.json(body);
 });
 
 // Error handling middleware
