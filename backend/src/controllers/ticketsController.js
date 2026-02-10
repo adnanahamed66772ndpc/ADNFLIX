@@ -1,12 +1,14 @@
 const pool = require('../config/database.js');
-const { v4: uuidv4  } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+const { hasRole } = require('../middleware/roles.js');
 
-// Get all tickets (admin only) or user's own tickets
+// Get all tickets (admin sees all; users see only their own)
 async function getTickets(req, res, next) {
   try {
     const { status, priority } = req.query;
     const userId = req.user?.id;
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = req.user?.role === 'admin' || (userId && (await hasRole(userId, 'admin')));
+    if (isAdmin && req.user) req.user.role = 'admin';
 
     let query = `
       SELECT 
@@ -64,7 +66,8 @@ async function getTicketById(req, res, next) {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = req.user?.role === 'admin' || (userId && (await hasRole(userId, 'admin')));
+    if (isAdmin && req.user) req.user.role = 'admin';
 
     // Get ticket
     const [tickets] = await pool.execute(
@@ -116,6 +119,9 @@ async function createTicket(req, res, next) {
     const { subject, message, priority = 'medium' } = req.body;
     const userId = req.user?.id;
 
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     if (!subject || !message) {
       return res.status(400).json({ error: 'Subject and message are required' });
     }
@@ -173,7 +179,8 @@ async function addReply(req, res, next) {
     const { id } = req.params;
     const { message } = req.body;
     const userId = req.user?.id;
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = req.user?.role === 'admin' || (userId && (await hasRole(userId, 'admin')));
+    if (isAdmin && req.user) req.user.role = 'admin';
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });

@@ -62,8 +62,20 @@ const CodeBlock = ({ code, language = 'json' }: { code: string; language?: strin
   );
 };
 
-const EndpointCard = ({ endpoint }: { endpoint: EndpointProps }) => {
+const EndpointCard = ({ endpoint, baseUrl }: { endpoint: EndpointProps; baseUrl?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const fullUrl = baseUrl
+    ? (baseUrl.replace(/\/api\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin : '')) + endpoint.path
+    : endpoint.path;
+
+  const handleCopyEndpoint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -73,8 +85,17 @@ const EndpointCard = ({ endpoint }: { endpoint: EndpointProps }) => {
       >
         {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         <MethodBadge method={endpoint.method} />
-        <code className="text-sm font-mono flex-1">{endpoint.path}</code>
-        <div className="flex gap-2">
+        <code className="text-sm font-mono flex-1 truncate">{endpoint.path}</code>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleCopyEndpoint}
+            title="Copy endpoint URL"
+          >
+            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+          </Button>
           {endpoint.auth && <Badge variant="outline" className="text-xs">Auth Required</Badge>}
         </div>
       </button>
@@ -1263,7 +1284,7 @@ POST /api/tickets { subject, message }`} language="javascript" />
                       </div>
                       <p className="text-sm text-muted-foreground mb-4">{section.description}</p>
                       {section.endpoints.map((endpoint, idx) => (
-                        <EndpointCard key={idx} endpoint={endpoint} />
+                        <EndpointCard key={idx} endpoint={endpoint} baseUrl={apiBaseUrl} />
                       ))}
                     </TabsContent>
                   ))}
