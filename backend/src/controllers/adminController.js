@@ -1,5 +1,6 @@
 const pool = require('../config/database.js');
-const { hasRole  } = require('../middleware/roles.js');
+const { v4: uuidv4 } = require('uuid');
+const { hasRole } = require('../middleware/roles.js');
 
 // Get all users (admin only)
 async function getUsers(req, res, next) {
@@ -63,7 +64,6 @@ async function updateUserRole(req, res, next) {
     await pool.execute('DELETE FROM user_roles WHERE user_id = ?', [userId]);
 
     // Insert new role
-    const { v4: uuidv4 } = await import('uuid');
     const roleId = uuidv4();
     await pool.execute(
       'INSERT INTO user_roles (id, user_id, role) VALUES (?, ?, ?)',
@@ -82,21 +82,56 @@ async function updateUserSubscription(req, res, next) {
     const { userId } = req.params;
     const { plan, expiresAt } = req.body;
 
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing user ID' });
+    }
     if (!['free', 'with-ads', 'premium'].includes(plan)) {
       return res.status(400).json({ error: 'Invalid subscription plan' });
     }
 
-    await pool.execute(
-      `UPDATE profiles SET
-        subscription_plan = ?,
-        subscription_expires_at = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = ?`,
-      [plan, expiresAt || null, userId]
+    // Normalize expiry: free = null; otherwise valid date or null
+    let expiresAtValue = null;
+    if (plan !== 'free' && expiresAt != null && expiresAt !== '') {
+      const d = new Date(expiresAt);
+      if (!Number.isNaN(d.getTime())) {
+        expiresAtValue = d.toISOString();
+      }
+    }
+
+    const [existing] = await pool.execute(
+      'SELECT user_id FROM profiles WHERE user_id = ?',
+      [userId]
     );
+
+    if (existing.length > 0) {
+      await pool.execute(
+        `UPDATE profiles SET
+          subscription_plan = ?,
+          subscription_expires_at = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?`,
+        [plan, expiresAtValue, userId]
+      );
+    } else {
+      // Create profile if missing (user exists in users table)
+      const [users] = await pool.execute('SELECT id FROM users WHERE id = ?', [userId]);
+      if (users.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      await pool.execute(
+        `INSERT INTO profiles (id, user_id, display_name, subscription_plan, subscription_expires_at)
+         VALUES (?, ?, NULL, ?, ?)
+         ON DUPLICATE KEY UPDATE
+         subscription_plan = VALUES(subscription_plan),
+         subscription_expires_at = VALUES(subscription_expires_at),
+         updated_at = CURRENT_TIMESTAMP`,
+        [uuidv4(), userId, plan, expiresAtValue]
+      );
+    }
 
     res.json({ success: true });
   } catch (error) {
+    console.error('updateUserSubscription error:', error);
     next(error);
   }
 }
