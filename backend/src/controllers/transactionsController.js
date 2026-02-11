@@ -79,7 +79,10 @@ async function createTransaction(req, res, next) {
 // Approve transaction (admin only)
 async function approveTransaction(req, res, next) {
   try {
-    const { transactionId } = req.params;
+    const transactionId = req.params.transactionId || req.params.id;
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Missing transaction ID' });
+    }
     const adminId = req.userId;
 
     // Get transaction
@@ -104,21 +107,41 @@ async function approveTransaction(req, res, next) {
       [adminId, transactionId]
     );
 
-    // Update user subscription
+    // Update user subscription (ensure profile exists)
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 1);
+    const planId = transaction.plan_id || 'with-ads';
 
-    await pool.execute(
-      `UPDATE profiles SET
-        subscription_plan = ?,
-        subscription_expires_at = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = ?`,
-      [transaction.plan_id, expiresAt.toISOString(), transaction.user_id]
+    const [profileRows] = await pool.execute(
+      'SELECT user_id FROM profiles WHERE user_id = ?',
+      [transaction.user_id]
     );
+
+    if (profileRows.length > 0) {
+      await pool.execute(
+        `UPDATE profiles SET
+          subscription_plan = ?,
+          subscription_expires_at = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?`,
+        [planId, expiresAt.toISOString(), transaction.user_id]
+      );
+    } else {
+      const profileId = uuidv4();
+      await pool.execute(
+        `INSERT INTO profiles (id, user_id, display_name, subscription_plan, subscription_expires_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+         subscription_plan = VALUES(subscription_plan),
+         subscription_expires_at = VALUES(subscription_expires_at),
+         updated_at = CURRENT_TIMESTAMP`,
+        [profileId, transaction.user_id, null, planId, expiresAt.toISOString()]
+      );
+    }
 
     res.json({ success: true });
   } catch (error) {
+    console.error('approveTransaction error:', error);
     next(error);
   }
 }
@@ -126,11 +149,14 @@ async function approveTransaction(req, res, next) {
 // Reject transaction (admin only)
 async function rejectTransaction(req, res, next) {
   try {
-    const { transactionId } = req.params;
+    const transactionId = req.params.transactionId || req.params.id;
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Missing transaction ID' });
+    }
     const { reason } = req.body;
     const adminId = req.userId;
 
-    await pool.execute(
+    const [result] = await pool.execute(
       `UPDATE transactions SET
         status = 'rejected',
         rejection_reason = ?,
@@ -140,8 +166,13 @@ async function rejectTransaction(req, res, next) {
       [reason || null, adminId, transactionId]
     );
 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Transaction not found or already processed' });
+    }
+
     res.json({ success: true });
   } catch (error) {
+    console.error('rejectTransaction error:', error);
     next(error);
   }
 }
