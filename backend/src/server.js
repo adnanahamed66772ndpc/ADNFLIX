@@ -225,9 +225,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler for API routes only
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'API route not found' });
+// 404 catch-all: any request that didn't get a response (e.g. no matching route)
+app.use((req, res, next) => {
+  if (res.headersSent) return next();
+  if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+    return res.status(404).json({ error: 'API route not found', path: req.path });
+  }
+  next();
 });
 
 // Start server - bind to 0.0.0.0 so reverse proxy (Nginx) can reach us in Docker

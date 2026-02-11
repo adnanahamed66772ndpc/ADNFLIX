@@ -237,22 +237,22 @@ const Admin = () => {
   };
 
   const handleApproveTransaction = async (id: string) => {
-    const success = await approveTransaction(id);
-    if (success) {
+    const result = await approveTransaction(id);
+    if (result.success) {
       toast({ title: "Transaction approved", description: "User subscription has been activated." });
       refreshTransactions();
     } else {
-      toast({ title: "Failed to approve transaction", variant: "destructive" });
+      toast({ title: "Failed to approve", description: result.error ?? "Try again.", variant: "destructive" });
     }
   };
 
   const handleRejectTransaction = async (id: string, reason: string) => {
-    const success = await rejectTransaction(id, reason);
-    if (success) {
+    const result = await rejectTransaction(id, reason);
+    if (result.success) {
       toast({ title: "Transaction rejected" });
       refreshTransactions();
     } else {
-      toast({ title: "Failed to reject transaction", variant: "destructive" });
+      toast({ title: "Failed to reject", description: result.error ?? "Try again.", variant: "destructive" });
     }
   };
 

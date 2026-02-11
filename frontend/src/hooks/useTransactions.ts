@@ -76,27 +76,37 @@ export function useTransactions() {
     }
   };
 
-  const approveTransaction = async (transactionId: string): Promise<boolean> => {
-    if (!isAdmin) return false;
+  const approveTransaction = async (transactionId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isAdmin) return { success: false, error: 'Admin access required' };
 
     try {
       await apiClient.post(`/transactions/${transactionId}/approve`, {});
-    await fetchTransactions();
-      return true;
-    } catch {
-      return false;
+      await fetchTransactions();
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return { success: false, error: 'Transaction not found or already processed.' };
+      if (status === 401) return { success: false, error: 'Please sign in again.' };
+      if (status === 403) return { success: false, error: 'Admin access required.' };
+      return { success: false, error: msg || 'Request failed. Try again.' };
     }
   };
 
-  const rejectTransaction = async (transactionId: string, reason: string): Promise<boolean> => {
-    if (!isAdmin) return false;
+  const rejectTransaction = async (transactionId: string, reason: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isAdmin) return { success: false, error: 'Admin access required' };
 
     try {
       await apiClient.post(`/transactions/${transactionId}/reject`, { reason });
-    await fetchTransactions();
-      return true;
-    } catch {
-      return false;
+      await fetchTransactions();
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return { success: false, error: 'Transaction not found or already processed.' };
+      if (status === 401) return { success: false, error: 'Please sign in again.' };
+      if (status === 403) return { success: false, error: 'Admin access required.' };
+      return { success: false, error: msg || 'Request failed. Try again.' };
     }
   };
 
