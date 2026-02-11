@@ -133,6 +133,7 @@ const categoriesRoutes = require('./routes/categories.js');
 const ticketsRoutes = require('./routes/tickets.js');
 const pagesRoutes = require('./routes/pages.js');
 const configRoutes = require('./routes/config.js');
+const cronRoutes = require('./routes/cron.js');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
@@ -146,6 +147,7 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Serve static frontend files in production (only if SERVE_FRONTEND=true)
 if (isProduction && process.env.SERVE_FRONTEND === 'true') {
@@ -195,7 +197,9 @@ app.get('/', (req, res) => {
       help: '/api/pages/help',
       tickets: '/api/tickets',
       admin: '/api/admin',
-      ads: '/api/ads'
+      ads: '/api/ads',
+      cron: '/api/cron',
+      expireSubscriptions: '/api/cron/expire-subscriptions'
     },
     paymentNumbers: {
       endpoint: 'GET /api/config/payment-methods',

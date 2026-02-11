@@ -107,9 +107,9 @@ async function approveTransaction(req, res, next) {
       [adminId, transactionId]
     );
 
-    // Update user subscription (ensure profile exists)
+    // Update user subscription: selected plan, 30 days then auto-downgrade to free
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    expiresAt.setDate(expiresAt.getDate() + 30);
     const planId = transaction.plan_id || 'with-ads';
 
     const [profileRows] = await pool.execute(

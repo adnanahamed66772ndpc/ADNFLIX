@@ -1,0 +1,28 @@
+# Run daily: expire paid subscriptions (downgrade to free after 30 days)
+# Add GitHub Actions secrets: CRON_SECRET (same as backend .env CRON_SECRET), API_BASE_URL (e.g. https://coliningram.site/api)
+
+name: Expire subscriptions (cron)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call expire-subscriptions
+        run: |
+          SECRET="${{ secrets.CRON_SECRET }}"
+          BASE="${{ secrets.API_BASE_URL }}"
+          if [ -z "$SECRET" ] || [ -z "$BASE" ]; then
+            echo "Skip: set CRON_SECRET and API_BASE_URL in repo Secrets to enable."
+            exit 0
+          fi
+          URL="${BASE%/}/cron/expire-subscriptions"
+          res=$(curl -sf -w "\n%{http_code}" -H "X-Cron-Secret: $SECRET" "$URL" || true)
+          code=$(echo "$res" | tail -n1)
+          body=$(echo "$res" | sed '$d')
+          echo "Response ($code): $body"
+          [ "$code" = "200" ] || [ "$code" = "201" ] || exit 1
