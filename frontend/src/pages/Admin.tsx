@@ -2037,47 +2037,55 @@ const SettingsTab = () => {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Payment numbers (website & app)</CardTitle>
-          <CardDescription>Set the send-money numbers for bKash, Nagad, and Rocket. These appear on the website Subscription page and in the app Payment details.</CardDescription>
+          <CardTitle>Payment Management</CardTitle>
+          <CardDescription>Manage payment methods and send-money numbers for website and app.</CardDescription>
         </CardHeader>
         <CardContent>
-          {paymentMethodsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {paymentMethods.map((pm) => (
-                <div key={pm.id} className="p-4 border border-border rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold capitalize">{pm.id}</h3>
-                    <Button
-                      size="sm"
-                      onClick={() => handleSavePaymentMethod(pm.id)}
-                      disabled={savingPaymentId === pm.id}
-                    >
-                      {savingPaymentId === pm.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                      Save
-                    </Button>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Display name</Label>
-                    <Input
-                      value={paymentEdits[pm.id]?.name ?? pm.name ?? ''}
-                      onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { ...prev[pm.id], name: e.target.value, number: prev[pm.id]?.number ?? pm.number ?? '' } }))}
-                      placeholder="e.g. bKash"
-                    />
-                    <Label>Send money number (shown to users)</Label>
-                    <Input
-                      value={paymentEdits[pm.id]?.number ?? pm.number ?? ''}
-                      onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { name: prev[pm.id]?.name ?? pm.name ?? '', number: e.target.value } }))}
-                      placeholder="01XXXXXXXXX"
-                    />
-                  </div>
+          <Tabs defaultValue="payment-numbers" className="w-full">
+            <TabsList>
+              <TabsTrigger value="payment-numbers">Payment numbers</TabsTrigger>
+            </TabsList>
+            <TabsContent value="payment-numbers" className="mt-4">
+              <p className="text-sm text-muted-foreground mb-4">Set the send-money numbers for bKash, Nagad, and Rocket. These appear on the website Subscription page and in the app Payment details.</p>
+              {paymentMethodsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                <div className="space-y-4">
+                  {paymentMethods.map((pm) => (
+                    <div key={pm.id} className="p-4 border border-border rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold capitalize">{pm.id}</h3>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSavePaymentMethod(pm.id)}
+                          disabled={savingPaymentId === pm.id}
+                        >
+                          {savingPaymentId === pm.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                          Save
+                        </Button>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Display name</Label>
+                        <Input
+                          value={paymentEdits[pm.id]?.name ?? pm.name ?? ''}
+                          onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { ...prev[pm.id], name: e.target.value, number: prev[pm.id]?.number ?? pm.number ?? '' } }))}
+                          placeholder="e.g. bKash"
+                        />
+                        <Label>Send money number (shown to users)</Label>
+                        <Input
+                          value={paymentEdits[pm.id]?.number ?? pm.number ?? ''}
+                          onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { name: prev[pm.id]?.name ?? pm.name ?? '', number: e.target.value } }))}
+                          placeholder="01XXXXXXXXX"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
       
