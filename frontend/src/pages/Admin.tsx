@@ -113,9 +113,9 @@ const Admin = () => {
     prevNewUserReplyCountRef.current = count;
   }, [tickets, toast]);
 
-  // Poll tickets so badge and alerts update when users reply
+  // Poll tickets in background (silent) so badge and alerts update without flickering the list
   useEffect(() => {
-    const t = setInterval(() => refreshTickets(), 2000);
+    const t = setInterval(() => refreshTickets(undefined, undefined, true), 2000);
     return () => clearInterval(t);
   }, [refreshTickets]);
 
@@ -1891,11 +1891,13 @@ const TicketsTab = ({
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-1 flex items-center gap-2">
+                    <h3 className="font-semibold mb-1 flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs text-muted-foreground">{ticket.support_id || ticket.id.slice(0, 8)}</span>
                       {ticket.subject}
                       {ticket.has_new_user_reply && (
                         <Badge variant="default" className="text-xs">New reply</Badge>
                       )}
+                      <Badge variant="outline" className="text-xs">{ticket.source === 'app' ? 'App' : 'Web'}</Badge>
                     </h3>
                     <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{ticket.message}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -1936,8 +1938,10 @@ const TicketsTab = ({
       <Dialog open={!!selectedTicket} onOpenChange={(open) => { if (!open) { setSelectedTicket(null); setTicketDetail(null); setReplyMessage(''); } }}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-2 border-b">
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-sm text-muted-foreground">{selectedTicket?.support_id || selectedTicket?.id?.slice(0, 8)}</span>
               {selectedTicket?.subject}
+              <Badge variant="outline" className="text-xs font-normal">{selectedTicket?.source === 'app' ? 'App' : 'Web'}</Badge>
               <span className="text-xs font-normal text-muted-foreground">· Live chat</span>
             </DialogTitle>
             <DialogDescription>

@@ -11,6 +11,10 @@ export interface Ticket {
   user_name?: string;
   user_email?: string;
   reply_count?: number;
+  /** Unique display id e.g. SUP-A1B2C3D4 */
+  support_id?: string;
+  /** 'web' | 'app' */
+  source?: string;
   /** Admin only: true when last reply is from user (needs admin attention) */
   has_new_user_reply?: boolean;
 }
@@ -32,8 +36,8 @@ export function useTickets() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTickets = useCallback(async (status?: string, priority?: string) => {
-    setIsLoading(true);
+  const fetchTickets = useCallback(async (status?: string, priority?: string, silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (status) params.append('status', status);
@@ -42,10 +46,12 @@ export function useTickets() {
       const data = await apiClient.get<Ticket[]>(url);
       setTickets(data);
     } catch (error) {
-      console.error('Failed to fetch tickets:', error);
-      setTickets([]);
+      if (!silent) {
+        console.error('Failed to fetch tickets:', error);
+        setTickets([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, []);
 

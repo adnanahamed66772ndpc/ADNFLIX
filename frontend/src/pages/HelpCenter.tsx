@@ -70,7 +70,7 @@ const HelpCenter = () => {
 
     setIsCreating(true);
     try {
-      await apiClient.post('/tickets', formData);
+      await apiClient.post('/tickets', { ...formData, source: 'web' });
       toast({ title: "Success", description: "Ticket created successfully" });
       setFormData({ subject: '', message: '', priority: 'medium' });
       fetchTickets();

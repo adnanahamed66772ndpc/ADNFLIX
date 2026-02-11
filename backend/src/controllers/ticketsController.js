@@ -131,7 +131,7 @@ async function getTicketById(req, res, next) {
 // Create new ticket
 async function createTicket(req, res, next) {
   try {
-    const { subject, message, priority = 'medium' } = req.body;
+    const { subject, message, priority = 'medium', source = 'web' } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -142,12 +142,15 @@ async function createTicket(req, res, next) {
     }
 
     const id = uuidv4();
+    const supportId = 'SUP-' + id.replace(/-/g, '').substring(0, 8).toUpperCase();
+    const sourceVal = source === 'app' ? 'app' : 'web';
+
     await pool.execute(
-      'INSERT INTO tickets (id, user_id, subject, message, priority) VALUES (?, ?, ?, ?, ?)',
-      [id, userId, subject, message, priority]
+      'INSERT INTO tickets (id, user_id, subject, message, priority, support_id, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, userId, subject, message, priority, supportId, sourceVal]
     );
 
-    res.status(201).json({ id, subject, message, priority, status: 'open' });
+    res.status(201).json({ id, support_id: supportId, subject, message, priority, status: 'open', source: sourceVal });
   } catch (error) {
     next(error);
   }
