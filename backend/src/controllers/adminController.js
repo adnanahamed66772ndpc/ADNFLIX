@@ -80,21 +80,22 @@ async function updateUserRole(req, res, next) {
 async function updateUserSubscription(req, res, next) {
   try {
     const { userId } = req.params;
-    const { plan, expiresAt } = req.body;
+    const body = req.body || {};
+    const plan = body.plan || body.subscriptionPlan;
 
     if (!userId) {
       return res.status(400).json({ error: 'Missing user ID' });
     }
-    if (!['free', 'with-ads', 'premium'].includes(plan)) {
+    if (!plan || !['free', 'with-ads', 'premium'].includes(plan)) {
       return res.status(400).json({ error: 'Invalid subscription plan' });
     }
 
-    // Normalize expiry: free = null; otherwise valid date or null
+    const expiresAt = body.expiresAt;
     let expiresAtValue = null;
     if (plan !== 'free' && expiresAt != null && expiresAt !== '') {
       const d = new Date(expiresAt);
       if (!Number.isNaN(d.getTime())) {
-        expiresAtValue = d.toISOString();
+        expiresAtValue = d.toISOString().slice(0, 19).replace('T', ' ');
       }
     }
 
@@ -113,11 +114,11 @@ async function updateUserSubscription(req, res, next) {
         [plan, expiresAtValue, userId]
       );
     } else {
-      // Create profile if missing (user exists in users table)
       const [users] = await pool.execute('SELECT id FROM users WHERE id = ?', [userId]);
       if (users.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
+      const profileId = uuidv4();
       await pool.execute(
         `INSERT INTO profiles (id, user_id, display_name, subscription_plan, subscription_expires_at)
          VALUES (?, ?, NULL, ?, ?)
@@ -125,13 +126,13 @@ async function updateUserSubscription(req, res, next) {
          subscription_plan = VALUES(subscription_plan),
          subscription_expires_at = VALUES(subscription_expires_at),
          updated_at = CURRENT_TIMESTAMP`,
-        [uuidv4(), userId, plan, expiresAtValue]
+        [profileId, userId, plan, expiresAtValue]
       );
     }
 
     res.json({ success: true });
   } catch (error) {
-    console.error('updateUserSubscription error:', error);
+    console.error('updateUserSubscription error:', error.message || error, error.stack);
     next(error);
   }
 }
