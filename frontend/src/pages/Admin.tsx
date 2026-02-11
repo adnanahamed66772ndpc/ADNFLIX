@@ -32,7 +32,8 @@ import {
   MoreVertical,
   Copy,
   Code,
-  ExternalLink
+  ExternalLink,
+  Wallet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +75,7 @@ type SubscriptionPlan = 'free' | 'with-ads' | 'premium';
 type AppRole = 'admin' | 'user';
 
 // Tab types
-type TabType = 'dashboard' | 'movies' | 'series' | 'categories' | 'users' | 'payments' | 'ads' | 'analytics' | 'tickets' | 'api-docs' | 'settings';
+type TabType = 'dashboard' | 'movies' | 'series' | 'categories' | 'users' | 'payments' | 'payment-management' | 'ads' | 'analytics' | 'tickets' | 'api-docs' | 'settings';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -316,6 +317,7 @@ const Admin = () => {
     { id: 'categories' as TabType, label: 'Categories', icon: Layers },
     { id: 'users' as TabType, label: 'Users', icon: Users },
     { id: 'payments' as TabType, label: 'Payments', icon: CreditCard, badge: pendingTransactionsCount },
+    { id: 'payment-management' as TabType, label: 'Payment Management', icon: Wallet },
     { id: 'tickets' as TabType, label: 'Tickets', icon: MessageSquare, badge: tickets.filter(t => t.status === 'open').length },
     { id: 'ads' as TabType, label: 'Ads', icon: Video },
     { id: 'analytics' as TabType, label: 'Analytics', icon: BarChart3 },
@@ -454,6 +456,8 @@ const Admin = () => {
                 onReject={handleRejectTransaction}
               />
             )}
+
+            {activeTab === 'payment-management' && <PaymentManagementTab />}
 
             {activeTab === 'tickets' && (
               <TicketsTab
@@ -1943,38 +1947,17 @@ const APIDocsTab = () => {
 // Payment method type for admin settings
 type PaymentMethodSetting = { id: string; name: string; number: string | null; updated_at?: string };
 
-// ============= Settings Tab =============
-const SettingsTab = () => {
+// ============= Payment Management Tab (sidebar tab) =============
+const PaymentManagementTab = () => {
   const { toast } = useToast();
-  const [pages, setPages] = useState<Array<{ id: string; page_key: string; title: string; content: string }>>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingPage, setEditingPage] = useState<string | null>(null);
-  const [pageContent, setPageContent] = useState({ title: '', content: '' });
-
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSetting[]>([]);
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
   const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
   const [paymentEdits, setPaymentEdits] = useState<Record<string, { name: string; number: string }>>({});
 
   useEffect(() => {
-    fetchPages();
-  }, []);
-
-  useEffect(() => {
     fetchPaymentMethods();
   }, []);
-
-  const fetchPages = async () => {
-    setIsLoading(true);
-    try {
-      const data = await apiClient.get<Array<{ id: string; page_key: string; title: string; content: string }>>('/pages');
-      setPages(data);
-    } catch (error) {
-      console.error('Failed to fetch pages:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchPaymentMethods = async () => {
     setPaymentMethodsLoading(true);
@@ -2009,44 +1992,25 @@ const SettingsTab = () => {
     }
   };
 
-  const handleEdit = (page: { page_key: string; title: string; content: string }) => {
-    setEditingPage(page.page_key);
-    setPageContent({ title: page.title, content: page.content });
-  };
-
-  const handleSave = async () => {
-    if (!editingPage) return;
-    try {
-      await apiClient.put(`/pages/${editingPage}`, pageContent);
-      toast({ title: "Success", description: "Page content updated" });
-      setEditingPage(null);
-      fetchPages();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to update page", variant: "destructive" });
-    }
-  };
-
   return (
     <motion.div
-      key="settings"
+      key="payment-management"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <h1 className="text-3xl font-bold mb-6">Settings</h1>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Payment Management</CardTitle>
-          <CardDescription>Manage payment methods and send-money numbers for website and app.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="payment-numbers" className="w-full">
-            <TabsList>
-              <TabsTrigger value="payment-numbers">Payment numbers</TabsTrigger>
-            </TabsList>
-            <TabsContent value="payment-numbers" className="mt-4">
-              <p className="text-sm text-muted-foreground mb-4">Set the send-money numbers for bKash, Nagad, and Rocket. These appear on the website Subscription page and in the app Payment details.</p>
+      <h1 className="text-3xl font-bold mb-6">Payment Management</h1>
+      <Tabs defaultValue="payment-numbers" className="w-full">
+        <TabsList>
+          <TabsTrigger value="payment-numbers">Payment numbers</TabsTrigger>
+        </TabsList>
+        <TabsContent value="payment-numbers" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment numbers (website & app)</CardTitle>
+              <CardDescription>Set the send-money numbers for bKash, Nagad, and Rocket. These appear on the website Subscription page and in the app Payment details.</CardDescription>
+            </CardHeader>
+            <CardContent>
               {paymentMethodsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -2084,11 +2048,64 @@ const SettingsTab = () => {
                   ))}
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-      
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </motion.div>
+  );
+};
+
+// ============= Settings Tab =============
+const SettingsTab = () => {
+  const { toast } = useToast();
+  const [pages, setPages] = useState<Array<{ id: string; page_key: string; title: string; content: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingPage, setEditingPage] = useState<string | null>(null);
+  const [pageContent, setPageContent] = useState({ title: '', content: '' });
+
+  useEffect(() => {
+    fetchPages();
+  }, []);
+
+  const fetchPages = async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiClient.get<Array<{ id: string; page_key: string; title: string; content: string }>>('/pages');
+      setPages(data);
+    } catch (error) {
+      console.error('Failed to fetch pages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEdit = (page: { page_key: string; title: string; content: string }) => {
+    setEditingPage(page.page_key);
+    setPageContent({ title: page.title, content: page.content });
+  };
+
+  const handleSave = async () => {
+    if (!editingPage) return;
+    try {
+      await apiClient.put(`/pages/${editingPage}`, pageContent);
+      toast({ title: "Success", description: "Page content updated" });
+      setEditingPage(null);
+      fetchPages();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to update page", variant: "destructive" });
+    }
+  };
+
+  return (
+    <motion.div
+      key="settings"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      <h1 className="text-3xl font-bold mb-6">Settings</h1>
+
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Page Content Management</CardTitle>
