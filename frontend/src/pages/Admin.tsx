@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -99,6 +99,25 @@ const Admin = () => {
   const [isAddingTitle, setIsAddingTitle] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [managingSeasons, setManagingSeasons] = useState<Title | null>(null);
+
+  // Alert admin when user replies: toast only when "new user reply" count increases (not on first load)
+  const prevNewUserReplyCountRef = useRef<number>(-1);
+  useEffect(() => {
+    const count = tickets.filter((t) => t.has_new_user_reply).length;
+    if (prevNewUserReplyCountRef.current >= 0 && count > prevNewUserReplyCountRef.current) {
+      toast({
+        title: 'New user reply',
+        description: count === 1 ? '1 ticket has a new reply from a user.' : `${count} tickets have new replies from users.`,
+      });
+    }
+    prevNewUserReplyCountRef.current = count;
+  }, [tickets, toast]);
+
+  // Poll tickets so badge and alerts update when users reply
+  useEffect(() => {
+    const t = setInterval(() => refreshTickets(), 2000);
+    return () => clearInterval(t);
+  }, [refreshTickets]);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -316,7 +335,7 @@ const Admin = () => {
     { id: 'categories' as TabType, label: 'Categories', icon: Layers },
     { id: 'users' as TabType, label: 'Users', icon: Users },
     { id: 'payments' as TabType, label: 'Payments', icon: CreditCard, badge: pendingTransactionsCount },
-    { id: 'tickets' as TabType, label: 'Tickets', icon: MessageSquare, badge: tickets.filter(t => t.status === 'open').length },
+    { id: 'tickets' as TabType, label: 'Tickets', icon: MessageSquare, badge: (() => { const n = tickets.filter(t => t.has_new_user_reply).length; return n > 0 ? n : tickets.filter(t => t.status === 'open').length; })() },
     { id: 'ads' as TabType, label: 'Ads', icon: Video },
     { id: 'analytics' as TabType, label: 'Analytics', icon: BarChart3 },
     { id: 'api-docs' as TabType, label: 'API Docs', icon: Code },
@@ -1868,11 +1887,16 @@ const TicketsTab = ({
       ) : (
         <div className="grid gap-4">
           {filteredTickets.map((ticket) => (
-            <Card key={ticket.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => setSelectedTicket(ticket)}>
+            <Card key={ticket.id} className={`cursor-pointer hover:bg-secondary/50 ${ticket.has_new_user_reply ? 'ring-2 ring-primary/50' : ''}`} onClick={() => setSelectedTicket(ticket)}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{ticket.subject}</h3>
+                    <h3 className="font-semibold mb-1 flex items-center gap-2">
+                      {ticket.subject}
+                      {ticket.has_new_user_reply && (
+                        <Badge variant="default" className="text-xs">New reply</Badge>
+                      )}
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{ticket.message}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>From: {ticket.user_name || ticket.user_email || 'User'}</span>

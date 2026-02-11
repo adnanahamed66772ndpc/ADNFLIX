@@ -11,6 +11,8 @@ export interface Ticket {
   user_name?: string;
   user_email?: string;
   reply_count?: number;
+  /** Admin only: true when last reply is from user (needs admin attention) */
+  has_new_user_reply?: boolean;
 }
 
 export interface TicketReply {

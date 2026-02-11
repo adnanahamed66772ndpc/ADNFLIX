@@ -10,12 +10,16 @@ async function getTickets(req, res, next) {
     const isAdmin = req.user?.role === 'admin' || (userId && (await hasRole(userId, 'admin')));
     if (isAdmin && req.user) req.user.role = 'admin';
 
+    const replyCountSub = '(SELECT COUNT(*) FROM ticket_replies tr WHERE tr.ticket_id = t.id) as reply_count';
+    const lastReplyAdminSub = isAdmin
+      ? ', (SELECT tr.is_admin FROM ticket_replies tr WHERE tr.ticket_id = t.id ORDER BY tr.created_at DESC LIMIT 1) as last_reply_is_admin'
+      : '';
     let query = `
       SELECT 
         t.*,
         p.display_name as user_name,
         u.email as user_email,
-        (SELECT COUNT(*) FROM ticket_replies tr WHERE tr.ticket_id = t.id) as reply_count
+        ${replyCountSub}${lastReplyAdminSub}
       FROM tickets t
       JOIN users u ON t.user_id = u.id
       LEFT JOIN profiles p ON u.id = p.user_id
@@ -55,7 +59,18 @@ async function getTickets(req, res, next) {
     query += ' ORDER BY t.created_at DESC';
 
     const [rows] = await pool.execute(query, params);
-    res.json(rows);
+    // For admin: add has_new_user_reply (user replied and admin has not replied after)
+    const out = rows.map((r) => {
+      const row = { ...r };
+      if (isAdmin && ('last_reply_is_admin' in row)) {
+        const replyCount = Number(r.reply_count) || 0;
+        const lastIsAdmin = r.last_reply_is_admin;
+        row.has_new_user_reply = replyCount === 0 || lastIsAdmin === 0 || lastIsAdmin === '0';
+        delete row.last_reply_is_admin;
+      }
+      return row;
+    });
+    res.json(out);
   } catch (error) {
     next(error);
   }
