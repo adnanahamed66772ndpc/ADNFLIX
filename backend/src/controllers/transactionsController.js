@@ -1,7 +1,22 @@
+/**
+ * Transactions controller: create (user), list, approve/reject (admin).
+ * Approve: normalizes plan_id to profiles ENUM (with-ads/premium), uses DB transaction,
+ * handles missing profile, returns clear 400/404/500 so frontend never gets unhandled 500.
+ */
 const pool = require('../config/database.js');
-const { v4: uuidv4  } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 
-// Get transactions
+/** Normalize plan_id from transactions to profiles ENUM: free | with-ads | premium */
+function normalizePlanId(planId) {
+  if (!planId || typeof planId !== 'string') return 'with-ads';
+  const p = planId.toLowerCase().trim();
+  if (p === 'premium') return 'premium';
+  if (p === 'free') return 'free';
+  if (p === 'with-ads' || p === 'with_ads' || p === 'withads' || p === 'basic') return 'with-ads';
+  return 'with-ads';
+}
+
+// Get transactions (user sees own; admin sees all)
 async function getTransactions(req, res, next) {
   try {
     const userId = req.userId;
@@ -35,11 +50,12 @@ async function getTransactions(req, res, next) {
       createdAt: t.created_at
     })));
   } catch (error) {
+    console.error('getTransactions error:', error.message || error);
     next(error);
   }
 }
 
-// Create transaction
+// Create transaction (user submits payment request)
 async function createTransaction(req, res, next) {
   try {
     const userId = req.userId;
@@ -70,24 +86,29 @@ async function createTransaction(req, res, next) {
       ]
     );
 
-    res.status(201).json({ id, orderId, success: true });
+    return res.status(201).json({ id, orderId, success: true });
   } catch (error) {
+    console.error('createTransaction error:', error.message || error);
     next(error);
   }
 }
 
-// Approve transaction (admin only)
+// Approve transaction (admin only). Uses DB transaction so we never approve without updating profile.
 async function approveTransaction(req, res, next) {
-  try {
-    const transactionId = req.params.transactionId || req.params.id;
-    if (!transactionId) {
-      return res.status(400).json({ error: 'Missing transaction ID' });
-    }
-    const adminId = req.userId;
+  const transactionId = (req.params.transactionId || req.params.id || '').toString().trim();
+  if (!transactionId) {
+    return res.status(400).json({ error: 'Missing transaction ID' });
+  }
 
-    // Get transaction
+  const adminId = req.userId;
+  if (!adminId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  let connection;
+  try {
     const [transactions] = await pool.execute(
-      'SELECT * FROM transactions WHERE id = ? AND status = ?',
+      'SELECT id, user_id, plan_id FROM transactions WHERE id = ? AND status = ?',
       [transactionId, 'pending']
     );
 
@@ -96,83 +117,122 @@ async function approveTransaction(req, res, next) {
     }
 
     const transaction = transactions[0];
+    const userId = transaction.user_id;
+    if (!userId) {
+      return res.status(400).json({ error: 'Transaction has no user' });
+    }
 
-    // Update transaction
-    await pool.execute(
-      `UPDATE transactions SET 
+    const planId = normalizePlanId(transaction.plan_id);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    const expiresAtStr = expiresAt.toISOString().slice(0, 19).replace('T', ' ');
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    await connection.execute(
+      `UPDATE transactions SET
         status = 'approved',
         processed_at = CURRENT_TIMESTAMP,
         processed_by = ?
-      WHERE id = ?`,
+       WHERE id = ?`,
       [adminId, transactionId]
     );
 
-    // Update user subscription: selected plan, 30 days then auto-downgrade to free
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-    const planId = transaction.plan_id || 'with-ads';
-
-    const [profileRows] = await pool.execute(
+    const [profileRows] = await connection.execute(
       'SELECT user_id FROM profiles WHERE user_id = ?',
-      [transaction.user_id]
+      [userId]
     );
 
     if (profileRows.length > 0) {
-      await pool.execute(
+      await connection.execute(
         `UPDATE profiles SET
           subscription_plan = ?,
           subscription_expires_at = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ?`,
-        [planId, expiresAt.toISOString(), transaction.user_id]
+         WHERE user_id = ?`,
+        [planId, expiresAtStr, userId]
       );
     } else {
-      const profileId = uuidv4();
-      await pool.execute(
+      const [userRows] = await connection.execute('SELECT id FROM users WHERE id = ?', [userId]);
+      if (userRows.length === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({ error: 'User not found' });
+      }
+      await connection.execute(
         `INSERT INTO profiles (id, user_id, display_name, subscription_plan, subscription_expires_at)
-         VALUES (?, ?, ?, ?, ?)
+         VALUES (?, ?, NULL, ?, ?)
          ON DUPLICATE KEY UPDATE
          subscription_plan = VALUES(subscription_plan),
          subscription_expires_at = VALUES(subscription_expires_at),
          updated_at = CURRENT_TIMESTAMP`,
-        [profileId, transaction.user_id, null, planId, expiresAt.toISOString()]
+        [uuidv4(), userId, planId, expiresAtStr]
       );
     }
 
-    res.json({ success: true });
+    await connection.commit();
+    connection.release();
+    connection = null;
+    return res.json({ success: true });
   } catch (error) {
-    console.error('approveTransaction error:', error);
-    next(error);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (e) {
+        console.error('approveTransaction rollback error:', e);
+      }
+      try {
+        connection.release();
+      } catch (_) {}
+    }
+    console.error('approveTransaction error:', error.message || error, error.stack);
+    const code = error.code;
+    const msg = (error.message || '').toLowerCase();
+    if (code === 'ER_NO_REFERENCED_ROW_2' || msg.includes('foreign key')) {
+      return res.status(400).json({ error: 'User or admin not found in database' });
+    }
+    if (code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' || msg.includes('enum')) {
+      return res.status(400).json({ error: 'Invalid subscription plan value' });
+    }
+    res.status(500).json({
+      error: 'Failed to approve transaction. Please try again or check server logs.',
+    });
   }
 }
 
 // Reject transaction (admin only)
 async function rejectTransaction(req, res, next) {
-  try {
-    const transactionId = req.params.transactionId || req.params.id;
-    if (!transactionId) {
-      return res.status(400).json({ error: 'Missing transaction ID' });
-    }
-    const { reason } = req.body;
-    const adminId = req.userId;
+  const transactionId = (req.params.transactionId || req.params.id || '').toString().trim();
+  if (!transactionId) {
+    return res.status(400).json({ error: 'Missing transaction ID' });
+  }
+  if (!req.userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
 
+  try {
     const [result] = await pool.execute(
       `UPDATE transactions SET
         status = 'rejected',
         rejection_reason = ?,
         processed_at = CURRENT_TIMESTAMP,
         processed_by = ?
-      WHERE id = ? AND status = 'pending'`,
-      [reason || null, adminId, transactionId]
+       WHERE id = ? AND status = 'pending'`,
+      [req.body?.reason ?? null, req.userId, transactionId]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transaction not found or already processed' });
     }
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
-    console.error('rejectTransaction error:', error);
+    console.error('rejectTransaction error:', error.message || error, error.stack);
+    const code = error.code;
+    if (code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ error: 'Admin user not found in database' });
+    }
     next(error);
   }
 }
