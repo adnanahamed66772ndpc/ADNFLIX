@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -87,7 +87,7 @@ const Admin = () => {
   const { transactions, isLoading: transactionsLoading, approveTransaction, rejectTransaction, refresh: refreshTransactions } = useTransactions();
   const { users, isLoading: usersLoading, updateUserRole, updateUserSubscription, refresh: refreshUsers } = useAdminUsers();
   const { categories, isLoading: categoriesLoading, addCategory, updateCategory, deleteCategory, refresh: refreshCategories } = useCategories();
-  const { tickets, isLoading: ticketsLoading, refresh: refreshTickets, updateTicketStatus } = useTickets();
+  const { tickets, isLoading: ticketsLoading, refresh: refreshTickets, updateTicketStatus, getTicketById } = useTickets();
 
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -461,6 +461,7 @@ const Admin = () => {
                 isLoading={ticketsLoading}
                 onUpdateStatus={updateTicketStatus}
                 refreshTickets={refreshTickets}
+                getTicketById={getTicketById}
               />
             )}
             {activeTab === 'ads' && <AdsTab />}
@@ -1747,20 +1748,25 @@ const CategoriesTab = ({
   );
 };
 
+const TICKET_POLL_MS = 3000;
+
 // ============= Tickets Tab =============
 const TicketsTab = ({
   tickets,
   isLoading,
   onUpdateStatus,
-  refreshTickets
+  refreshTickets,
+  getTicketById
 }: {
   tickets: Ticket[];
   isLoading: boolean;
   onUpdateStatus: (id: string, status: string, priority?: string) => Promise<boolean>;
   refreshTickets: () => void;
+  getTicketById: (id: string) => Promise<{ id: string; subject: string; message: string; status: string; priority: string; created_at: string; user_name?: string; user_email?: string; replies: Array<{ id: string; message: string; is_admin: boolean; created_at: string; user_name?: string }> }>;
 }) => {
   const { toast } = useToast();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [ticketDetail, setTicketDetail] = useState<{ id: string; subject: string; message: string; status: string; user_name?: string; user_email?: string; replies: Array<{ id: string; message: string; is_admin: boolean; created_at: string; user_name?: string }> } | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -1769,13 +1775,38 @@ const TicketsTab = ({
     ? tickets 
     : tickets.filter(t => t.status === statusFilter);
 
+  const fetchTicketDetail = useCallback(async (ticketId: string) => {
+    try {
+      const data = await getTicketById(ticketId);
+      setTicketDetail(data);
+    } catch (_) {
+      setTicketDetail(null);
+    }
+  }, [getTicketById]);
+
+  useEffect(() => {
+    if (!selectedTicket) {
+      setTicketDetail(null);
+      return;
+    }
+    fetchTicketDetail(selectedTicket.id);
+  }, [selectedTicket?.id]);
+
+  useEffect(() => {
+    if (!selectedTicket?.id) return;
+    const t = setInterval(() => fetchTicketDetail(selectedTicket.id), TICKET_POLL_MS);
+    return () => clearInterval(t);
+  }, [selectedTicket?.id, fetchTicketDetail]);
+
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
     try {
       await onUpdateStatus(ticketId, newStatus);
       toast({ title: "Success", description: "Ticket status updated" });
       refreshTickets();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to update status", variant: "destructive" });
+      if (ticketDetail?.id === ticketId) setTicketDetail((d) => d ? { ...d, status: newStatus } : null);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to update status";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -1784,12 +1815,13 @@ const TicketsTab = ({
     setIsSubmitting(true);
     try {
       await apiClient.post(`/tickets/${selectedTicket.id}/replies`, { message: replyMessage });
-      toast({ title: "Success", description: "Reply sent" });
+      toast({ title: "Sent", description: "Reply sent. User will see it in a few seconds." });
       setReplyMessage('');
-      setSelectedTicket(null);
+      await fetchTicketDetail(selectedTicket.id);
       refreshTickets();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to send reply", variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to send reply";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -1876,46 +1908,72 @@ const TicketsTab = ({
         </div>
       )}
 
-      {/* Reply Dialog */}
-      <Dialog open={!!selectedTicket} onOpenChange={() => { setSelectedTicket(null); setReplyMessage(''); }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Reply to Ticket</DialogTitle>
+      {/* Live chat dialog */}
+      <Dialog open={!!selectedTicket} onOpenChange={(open) => { if (!open) { setSelectedTicket(null); setTicketDetail(null); setReplyMessage(''); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              {selectedTicket?.subject}
+              <span className="text-xs font-normal text-muted-foreground">· Live chat</span>
+            </DialogTitle>
             <DialogDescription>
-              Add a reply to this support ticket.
+              {selectedTicket && (ticketDetail?.user_name || ticketDetail?.user_email || 'User')} · Updates every few seconds
             </DialogDescription>
           </DialogHeader>
           {selectedTicket && (
             <>
-              <div className="space-y-2">
-                <p className="font-semibold">{selectedTicket.subject}</p>
-                <p className="text-sm text-muted-foreground">{selectedTicket.message}</p>
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 max-h-[320px]">
+                {!ticketDetail ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  (() => {
+                    const initialCreatedAt = (ticketDetail as { created_at?: string }).created_at || new Date().toISOString();
+                    const messages = [
+                      { id: 'initial', message: ticketDetail.message, is_admin: false, created_at: initialCreatedAt, user_name: ticketDetail.user_name },
+                      ...(ticketDetail.replies || []).map((r) => ({ id: r.id, message: r.message, is_admin: r.is_admin, created_at: r.created_at, user_name: r.user_name })),
+                    ];
+                    return messages.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${msg.is_admin ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md'}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium">{msg.is_admin ? 'You (Admin)' : (msg.user_name || 'User')}</span>
+                            <span className="text-[10px] opacity-75">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="whitespace-pre-wrap text-sm break-words">{msg.message}</p>
+                        </div>
+                      </div>
+                    ));
+                  })()
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Your Reply</Label>
+              <div className="p-4 border-t flex gap-2">
+                <Select value={selectedTicket.status} onValueChange={(v) => handleStatusChange(selectedTicket.id, v)}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Textarea
                   value={replyMessage}
                   onChange={(e) => setReplyMessage(e.target.value)}
                   placeholder="Type your reply..."
-                  rows={6}
+                  rows={2}
+                  className="flex-1 min-h-[52px] resize-none"
                 />
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => { setSelectedTicket(null); setReplyMessage(''); }}>Cancel</Button>
-                <Button onClick={handleReply} disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Send Reply
-                    </>
-                  )}
+                <Button onClick={handleReply} disabled={isSubmitting || !replyMessage.trim()} className="shrink-0 h-[52px] px-4">
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </Button>
-              </DialogFooter>
+              </div>
+              <div className="px-6 pb-4 pt-0">
+                <Button variant="outline" size="sm" onClick={() => { setSelectedTicket(null); setTicketDetail(null); setReplyMessage(''); }}>Close</Button>
+              </div>
             </>
           )}
         </DialogContent>
