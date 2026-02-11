@@ -1748,7 +1748,7 @@ const CategoriesTab = ({
   );
 };
 
-const TICKET_POLL_MS = 3000;
+const TICKET_POLL_MS = 1000;
 
 // ============= Tickets Tab =============
 const TicketsTab = ({
@@ -1917,7 +1917,7 @@ const TicketsTab = ({
               <span className="text-xs font-normal text-muted-foreground">· Live chat</span>
             </DialogTitle>
             <DialogDescription>
-              {selectedTicket && (ticketDetail?.user_name || ticketDetail?.user_email || 'User')} · Updates every few seconds
+              {selectedTicket && (ticketDetail?.user_name || ticketDetail?.user_email || 'User')} · Updates every second
             </DialogDescription>
           </DialogHeader>
           {selectedTicket && (

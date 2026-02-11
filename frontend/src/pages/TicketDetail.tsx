@@ -29,7 +29,7 @@ interface Ticket {
   replies: TicketReply[];
 }
 
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = 1000;
 
 const TicketDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -121,7 +121,7 @@ const TicketDetail = () => {
             <h1 className="text-lg font-semibold truncate">{ticket.subject}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <Badge variant="outline" className="capitalize text-xs">{ticket.status.replace('_', ' ')}</Badge>
-              <span className="text-xs text-muted-foreground">Live chat · updates every few seconds</span>
+              <span className="text-xs text-muted-foreground">Live chat · updates every second</span>
             </div>
           </div>
         </div>
