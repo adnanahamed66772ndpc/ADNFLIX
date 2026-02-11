@@ -32,8 +32,7 @@ import {
   MoreVertical,
   Copy,
   Code,
-  ExternalLink,
-  Wallet
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,7 +74,7 @@ type SubscriptionPlan = 'free' | 'with-ads' | 'premium';
 type AppRole = 'admin' | 'user';
 
 // Tab types
-type TabType = 'dashboard' | 'movies' | 'series' | 'categories' | 'users' | 'payments' | 'payment-management' | 'ads' | 'analytics' | 'tickets' | 'api-docs' | 'settings';
+type TabType = 'dashboard' | 'movies' | 'series' | 'categories' | 'users' | 'payments' | 'ads' | 'analytics' | 'tickets' | 'api-docs' | 'settings';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -317,7 +316,6 @@ const Admin = () => {
     { id: 'categories' as TabType, label: 'Categories', icon: Layers },
     { id: 'users' as TabType, label: 'Users', icon: Users },
     { id: 'payments' as TabType, label: 'Payments', icon: CreditCard, badge: pendingTransactionsCount },
-    { id: 'payment-management' as TabType, label: 'Payment Management', icon: Wallet },
     { id: 'tickets' as TabType, label: 'Tickets', icon: MessageSquare, badge: tickets.filter(t => t.status === 'open').length },
     { id: 'ads' as TabType, label: 'Ads', icon: Video },
     { id: 'analytics' as TabType, label: 'Analytics', icon: BarChart3 },
@@ -456,8 +454,6 @@ const Admin = () => {
                 onReject={handleRejectTransaction}
               />
             )}
-
-            {activeTab === 'payment-management' && <PaymentManagementTab />}
 
             {activeTab === 'tickets' && (
               <TicketsTab
@@ -975,6 +971,9 @@ const UsersTab = ({
   </motion.div>
 );
 
+// Payment method type for payment numbers edit (used inside Payments tab)
+type PaymentMethodSetting = { id: string; name: string; number: string | null; updated_at?: string };
+
 // ============= Payments Tab =============
 const PaymentsTab = ({
   transactions,
@@ -987,10 +986,17 @@ const PaymentsTab = ({
   onApprove: (id: string) => void;
   onReject: (id: string, reason: string) => void;
 }) => {
+  const { toast } = useToast();
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
+  // Payment numbers (sub-tab state)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSetting[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
+  const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
+  const [paymentEdits, setPaymentEdits] = useState<Record<string, { name: string; number: string }>>({});
 
   const filteredTransactions = filterStatus === 'all' 
     ? transactions 
@@ -1008,6 +1014,43 @@ const PaymentsTab = ({
       setRejectReason('');
     }
   };
+
+  const fetchPaymentMethods = async () => {
+    setPaymentMethodsLoading(true);
+    try {
+      const data = await apiClient.get<PaymentMethodSetting[]>('/admin/config/payment-methods');
+      setPaymentMethods(data);
+      const edits: Record<string, { name: string; number: string }> = {};
+      data.forEach((pm) => {
+        edits[pm.id] = { name: pm.name || '', number: pm.number || '' };
+      });
+      setPaymentEdits(edits);
+    } catch (error) {
+      console.error('Failed to fetch payment methods:', error);
+      toast({ title: "Error", description: "Could not load payment methods", variant: "destructive" });
+    } finally {
+      setPaymentMethodsLoading(false);
+    }
+  };
+
+  const handleSavePaymentMethod = async (id: string) => {
+    const edit = paymentEdits[id];
+    if (!edit) return;
+    setSavingPaymentId(id);
+    try {
+      await apiClient.put(`/admin/config/payment-methods/${id}`, { name: edit.name.trim() || undefined, number: edit.number.trim() || undefined });
+      toast({ title: "Saved", description: "Payment number updated. Website and app will show the new number." });
+      fetchPaymentMethods();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingPaymentId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchPaymentMethods();
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -1039,11 +1082,18 @@ const PaymentsTab = ({
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Payment Management</h1>
-          <p className="text-muted-foreground">Review and process subscription payments</p>
+          <h1 className="text-3xl font-bold">Payments</h1>
+          <p className="text-muted-foreground">Transactions and payment numbers for website & app</p>
         </div>
       </div>
 
+      <Tabs defaultValue="transactions" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="payment-numbers">Payment numbers</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions" className="mt-0">
       {/* Stats */}
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <Card className="cursor-pointer hover:border-yellow-500/50 transition-colors" onClick={() => setFilterStatus('pending')}>
@@ -1187,6 +1237,56 @@ const PaymentsTab = ({
           </div>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="payment-numbers" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment numbers (website & app)</CardTitle>
+              <CardDescription>Set the send-money numbers for bKash, Nagad, and Rocket. These appear on the website Subscription page and in the app Payment details.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {paymentMethodsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {paymentMethods.map((pm) => (
+                    <div key={pm.id} className="p-4 border border-border rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold capitalize">{pm.id}</h3>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSavePaymentMethod(pm.id)}
+                          disabled={savingPaymentId === pm.id}
+                        >
+                          {savingPaymentId === pm.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                          Save
+                        </Button>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Display name</Label>
+                        <Input
+                          value={paymentEdits[pm.id]?.name ?? pm.name ?? ''}
+                          onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { ...prev[pm.id], name: e.target.value, number: prev[pm.id]?.number ?? pm.number ?? '' } }))}
+                          placeholder="e.g. bKash"
+                        />
+                        <Label>Send money number (shown to users)</Label>
+                        <Input
+                          value={paymentEdits[pm.id]?.number ?? pm.number ?? ''}
+                          onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { name: prev[pm.id]?.name ?? pm.name ?? '', number: e.target.value } }))}
+                          placeholder="01XXXXXXXXX"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Transaction Details Dialog */}
       <Dialog open={!!selectedTransaction && !showRejectDialog} onOpenChange={() => setSelectedTransaction(null)}>
@@ -1940,118 +2040,6 @@ const APIDocsTab = () => {
           </div>
         </CardContent>
       </Card>
-    </motion.div>
-  );
-};
-
-// Payment method type for admin settings
-type PaymentMethodSetting = { id: string; name: string; number: string | null; updated_at?: string };
-
-// ============= Payment Management Tab (sidebar tab) =============
-const PaymentManagementTab = () => {
-  const { toast } = useToast();
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSetting[]>([]);
-  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
-  const [savingPaymentId, setSavingPaymentId] = useState<string | null>(null);
-  const [paymentEdits, setPaymentEdits] = useState<Record<string, { name: string; number: string }>>({});
-
-  useEffect(() => {
-    fetchPaymentMethods();
-  }, []);
-
-  const fetchPaymentMethods = async () => {
-    setPaymentMethodsLoading(true);
-    try {
-      const data = await apiClient.get<PaymentMethodSetting[]>('/admin/config/payment-methods');
-      setPaymentMethods(data);
-      const edits: Record<string, { name: string; number: string }> = {};
-      data.forEach((pm) => {
-        edits[pm.id] = { name: pm.name || '', number: pm.number || '' };
-      });
-      setPaymentEdits(edits);
-    } catch (error) {
-      console.error('Failed to fetch payment methods:', error);
-      toast({ title: "Error", description: "Could not load payment methods", variant: "destructive" });
-    } finally {
-      setPaymentMethodsLoading(false);
-    }
-  };
-
-  const handleSavePaymentMethod = async (id: string) => {
-    const edit = paymentEdits[id];
-    if (!edit) return;
-    setSavingPaymentId(id);
-    try {
-      await apiClient.put(`/admin/config/payment-methods/${id}`, { name: edit.name.trim() || undefined, number: edit.number.trim() || undefined });
-      toast({ title: "Saved", description: "Payment number updated. Website and app will show the new number." });
-      fetchPaymentMethods();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to save", variant: "destructive" });
-    } finally {
-      setSavingPaymentId(null);
-    }
-  };
-
-  return (
-    <motion.div
-      key="payment-management"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-    >
-      <h1 className="text-3xl font-bold mb-6">Payment Management</h1>
-      <Tabs defaultValue="payment-numbers" className="w-full">
-        <TabsList>
-          <TabsTrigger value="payment-numbers">Payment numbers</TabsTrigger>
-        </TabsList>
-        <TabsContent value="payment-numbers" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment numbers (website & app)</CardTitle>
-              <CardDescription>Set the send-money numbers for bKash, Nagad, and Rocket. These appear on the website Subscription page and in the app Payment details.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {paymentMethodsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {paymentMethods.map((pm) => (
-                    <div key={pm.id} className="p-4 border border-border rounded-lg space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold capitalize">{pm.id}</h3>
-                        <Button
-                          size="sm"
-                          onClick={() => handleSavePaymentMethod(pm.id)}
-                          disabled={savingPaymentId === pm.id}
-                        >
-                          {savingPaymentId === pm.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                          Save
-                        </Button>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Display name</Label>
-                        <Input
-                          value={paymentEdits[pm.id]?.name ?? pm.name ?? ''}
-                          onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { ...prev[pm.id], name: e.target.value, number: prev[pm.id]?.number ?? pm.number ?? '' } }))}
-                          placeholder="e.g. bKash"
-                        />
-                        <Label>Send money number (shown to users)</Label>
-                        <Input
-                          value={paymentEdits[pm.id]?.number ?? pm.number ?? ''}
-                          onChange={(e) => setPaymentEdits((prev) => ({ ...prev, [pm.id]: { name: prev[pm.id]?.name ?? pm.name ?? '', number: e.target.value } }))}
-                          placeholder="01XXXXXXXXX"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </motion.div>
   );
 };
