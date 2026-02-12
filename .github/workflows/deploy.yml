@@ -55,10 +55,16 @@ jobs:
               echo "Attempt $attempt failed, retrying in 30s..."
               sleep 30
             done
-            echo "Waiting for backend health..."
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              curl -sf http://127.0.0.1:3000/health && break
-              [ $i -eq 12 ] && { echo "::error::Backend health check failed"; exit 1; }
-              sleep 2
+            echo "Waiting for backend health (up to 2 min)..."
+            i=0
+            while [ $i -lt 40 ]; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/health 2>/dev/null || echo "000")
+              if [ "$code" = "200" ]; then
+                echo "Backend healthy (200)."
+                break
+              fi
+              [ $i -eq 39 ] && { echo "::error::Backend health check failed (no 200 after 2 min). Last code: $code"; exit 1; }
+              i=$((i+1))
+              sleep 3
             done
             echo "Deploy OK."
