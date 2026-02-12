@@ -6,12 +6,13 @@ import apiClient from '@/api/client';
 import { fetchVASTAd, VASTAd } from '@/lib/vastParser';
 import { fetchVMAP, resolveAllAdBreaks, categorizeAdBreaks, ResolvedAdBreak } from '@/lib/vmapParser';
 import type { AudioTrack } from '@/lib/languageUtils';
-import type { AudioTrack } from '@/lib/languageUtils';
 
 type AdState = 'loading_ads' | 'pre_roll' | 'playing' | 'mid_roll' | 'post_roll' | 'ended';
 
 interface VideoPlayerWithAdsProps {
   src: string;
+  /** Fallback URL when src fails (e.g. proxied HLS when direct fails) */
+  fallbackSrc?: string;
   poster?: string;
   title?: string;
   onProgress?: (currentTime: number, duration: number) => void;
@@ -36,6 +37,7 @@ interface UnifiedAd {
 
 export const VideoPlayerWithAds = ({
   src,
+  fallbackSrc,
   poster,
   title,
   onProgress,
@@ -418,6 +420,7 @@ export const VideoPlayerWithAds = ({
   return (
     <VideoPlayer
       src={src}
+      fallbackSrc={fallbackSrc}
       poster={poster}
       title={title}
       onProgress={handleVideoProgress}

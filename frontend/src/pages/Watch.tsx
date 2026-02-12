@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, SkipForward, Loader2 } from 'lucide-react';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import VideoPlayerWithAds from '@/components/VideoPlayerWithAds';
-import { getPlayableVideoUrl } from '@/lib/videoUrl';
+import { getPlayableVideoUrl, getPlayableVideoUrlProxied } from '@/lib/videoUrl';
 import { useTitlesContext, Episode } from '@/contexts/TitlesContext';
 import { usePlaybackProgress } from '@/hooks/usePlaybackProgress';
 import { useAuth } from '@/hooks/useAuth';
@@ -536,6 +536,7 @@ const Watch = () => {
       <div className="flex-1 w-full h-full">
         <VideoPlayerWithAds
           src={getPlayableVideoUrl(videoUrl)}
+          fallbackSrc={videoUrl?.toLowerCase().includes('.m3u8') ? getPlayableVideoUrlProxied(videoUrl) : undefined}
           poster={title.backdropUrl}
           title={videoTitle}
           onProgress={handleProgress}
