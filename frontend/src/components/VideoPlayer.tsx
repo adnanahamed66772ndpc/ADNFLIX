@@ -129,7 +129,7 @@ const VideoPlayer = ({
         highBufferWatchdogPeriod: 2,
         nudgeOffset: 0.1,
         nudgeMaxRetry: 5,
-        fragLoadingTimeOut: 60,
+        fragLoadingTimeOut: 60000, // ms (60s) – segments go through proxy and can be slow
         fragLoadingMaxRetry: 6,
         manifestLoadingTimeOut: 60000,
         manifestLoadingMaxRetry: 4,
