@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { fetchHlsManifestAndRewriteAsBlobUrl } from '@/lib/videoUrl';
 
 interface VideoPlayerProps {
   src: string;
@@ -45,6 +46,7 @@ const VideoPlayer = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const hlsBlobUrlRef = useRef<string | null>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const bufferingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const progressCallbackRef = useRef(onProgress);
@@ -117,7 +119,6 @@ const VideoPlayer = ({
     };
 
     if (Hls.isSupported() && src.includes('.m3u8')) {
-      // HLS streaming - plays in chunks automatically
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
@@ -128,7 +129,6 @@ const VideoPlayer = ({
         highBufferWatchdogPeriod: 2,
         nudgeOffset: 0.1,
         nudgeMaxRetry: 5,
-        // Longer timeouts for proxy/remote HLS (segments go through backend)
         fragLoadingTimeOut: 60,
         fragLoadingMaxRetry: 6,
         manifestLoadingTimeOut: 60000,
@@ -137,8 +137,22 @@ const VideoPlayer = ({
         levelLoadingMaxRetry: 4,
       });
       hlsRef.current = hls;
-      hls.loadSource(src);
       hls.attachMedia(video);
+
+      const isProxyHls = src.includes('/videos/stream?url=') && src.includes('.m3u8');
+      if (isProxyHls) {
+        fetchHlsManifestAndRewriteAsBlobUrl(src)
+          .then(({ blobUrl }) => {
+            hlsBlobUrlRef.current = blobUrl;
+            if (hlsRef.current) hlsRef.current.loadSource(blobUrl);
+          })
+          .catch((err) => {
+            console.error('HLS manifest fetch/rewrite failed:', err);
+            setPlaybackError('Failed to load stream. Check your connection.');
+          });
+      } else {
+        hls.loadSource(src);
+      }
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsLoading(false);
       });
@@ -171,6 +185,10 @@ const VideoPlayer = ({
       });
       
       return () => {
+        if (hlsBlobUrlRef.current) {
+          URL.revokeObjectURL(hlsBlobUrlRef.current);
+          hlsBlobUrlRef.current = null;
+        }
         hls.off(Hls.Events.LEVEL_LOADED, handleLevelLoaded);
         video.removeEventListener('canplay', handleCanPlay);
       };
