@@ -33,7 +33,66 @@ function isUrlAllowedForProxy(rawUrl) {
 // Timeout for proxy request to upstream (manifest or segment). HLS client waits up to 60s.
 const PROXY_UPSTREAM_TIMEOUT_MS = 55000;
 
+// Build proxy base URL for rewriting HLS segment URLs (e.g. https://coliningram.site/api/videos/stream?url=)
+function getStreamProxyBaseUrl(req) {
+  const protocol = req.get('x-forwarded-proto') || (req.connection?.encrypted ? 'https' : 'http');
+  const host = req.get('host') || 'localhost';
+  return `${protocol}://${host}/api/videos/stream?url=`;
+}
+
+// Fetch full response body (for HLS manifest rewriting)
+function fetchUrlAsBuffer(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const client = u.protocol === 'https:' ? https : http;
+    const req = client.request(url, { headers: options.headers || {} }, (res) => {
+      if (res.statusCode !== 200 && res.statusCode !== 206) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        return;
+      }
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.setTimeout(PROXY_UPSTREAM_TIMEOUT_MS, () => { req.destroy(); reject(new Error('timeout')); });
+    req.end();
+  });
+}
+
+// Rewrite HLS manifest so segment URLs go through our proxy (fixes 404 on /api/videos/output0.ts)
+function rewriteHlsManifest(manifestText, manifestUrl, proxyBaseUrl) {
+  const base = new URL(manifestUrl);
+  const lines = manifestText.split(/\r?\n/);
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line || line.startsWith('#')) {
+      out.push(line);
+      continue;
+    }
+    const trimmed = line.trim();
+    if (!trimmed) {
+      out.push(line);
+      continue;
+    }
+    try {
+      const segmentUrl = new URL(trimmed, base.href).href;
+      if (!isUrlAllowedForProxy(segmentUrl)) {
+        out.push(line);
+        continue;
+      }
+      out.push(proxyBaseUrl + encodeURIComponent(segmentUrl));
+    } catch {
+      out.push(line);
+    }
+  }
+  return out.join('\n');
+}
+
 // Proxy external video through our API to avoid CORS (browser requests our origin, we stream from external URL).
+// For HLS .m3u8 manifests we rewrite segment URLs so they also go through the proxy.
 async function streamProxy(req, res, next) {
   try {
     const rawUrl = req.query.url;
@@ -43,6 +102,28 @@ async function streamProxy(req, res, next) {
     let decodedUrl = decodeURIComponent(rawUrl.trim());
     if (!isUrlAllowedForProxy(decodedUrl)) {
       return res.status(403).json({ error: 'Video URL is not allowed for proxy' });
+    }
+
+    const isHlsManifest = /\.m3u8($|\?)/i.test(decodedUrl);
+    if (isHlsManifest) {
+      try {
+        const buf = await fetchUrlAsBuffer(decodedUrl, {
+          headers: {
+            'Accept': 'application/vnd.apple.mpegurl,*/*',
+            'User-Agent': req.headers['user-agent'] || 'ADNFLIX-StreamProxy/1.0',
+          },
+        });
+        const manifestText = buf.toString('utf8');
+        const proxyBaseUrl = getStreamProxyBaseUrl(req);
+        const rewritten = rewriteHlsManifest(manifestText, decodedUrl, proxyBaseUrl);
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        res.setHeader('Cache-Control', 'public, max-age=5');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.send(rewritten);
+      } catch (err) {
+        console.error('[video proxy] HLS manifest fetch failed:', err.message);
+        return res.status(502).json({ error: 'Failed to fetch HLS manifest' });
+      }
     }
 
     let range = req.headers.range;
