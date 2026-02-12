@@ -7,8 +7,6 @@ const { VIDEO_STORAGE_PATH } = require('../config/storage.js');
 
 // Buffer size between remote upstream and client (smooths out slow/bursty remote streams)
 const PROXY_STREAM_BUFFER_SIZE = 2 * 1024 * 1024; // 2MB
-// Timeout for proxy request to upstream (manifest or first chunk). HLS manifest can be slow on cold CDN.
-const PROXY_REQUEST_TIMEOUT_MS = 45000; // 45 seconds
 
 /**
  * Video Controller - No Encoding/Conversion Policy
@@ -59,10 +57,7 @@ async function streamProxy(req, res, next) {
     };
     if (range) requestHeaders.range = range;
 
-    const proxyReq = client.request(decodedUrl, {
-      headers: requestHeaders,
-      timeout: PROXY_REQUEST_TIMEOUT_MS,
-    }, (proxyRes) => {
+    const proxyReq = client.request(decodedUrl, { headers: requestHeaders }, (proxyRes) => {
       const status = proxyRes.statusCode;
       if (status !== 200 && status !== 206) {
         res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -90,13 +85,6 @@ async function streamProxy(req, res, next) {
     proxyReq.on('error', (err) => {
       console.error('[video proxy]', err.message);
       if (!res.headersSent) res.status(502).json({ error: 'Failed to fetch video' });
-    });
-    proxyReq.on('timeout', () => {
-      proxyReq.destroy();
-      if (!res.headersSent) {
-        res.writeHead(504, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Upstream video took too long to respond' }));
-      }
     });
     req.on('abort', () => proxyReq.destroy());
     proxyReq.end();

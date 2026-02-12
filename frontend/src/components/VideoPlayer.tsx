@@ -19,8 +19,6 @@ import { Slider } from '@/components/ui/slider';
 
 interface VideoPlayerProps {
   src: string;
-  /** Fallback URL when src fails (e.g. proxied HLS when direct fails with timeout/CORS) */
-  fallbackSrc?: string;
   poster?: string;
   title?: string;
   onProgress?: (currentTime: number, duration: number, forceImmediate?: boolean) => void;
@@ -34,7 +32,6 @@ interface VideoPlayerProps {
 
 const VideoPlayer = ({
   src,
-  fallbackSrc,
   poster,
   title,
   onProgress,
@@ -65,8 +62,6 @@ const VideoPlayer = ({
   const [isLoading, setIsLoading] = useState(true);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
-  /** Current source in use (src or fallbackSrc after retry) */
-  const [currentSrc, setCurrentSrc] = useState(src);
 
   // Keep callback refs updated without triggering re-renders
   useEffect(() => {
@@ -88,18 +83,13 @@ const VideoPlayer = ({
     }
   }, [fallbackDuration, duration]);
 
-  // Sync currentSrc when src prop changes (e.g. user navigated to another video)
-  useEffect(() => {
-    setCurrentSrc(src);
-  }, [src]);
-
   // Reset seek-to-start tracking when video source changes
   useEffect(() => {
     didApplyStartTimeRef.current = false;
     setIsLoading(true);
     setPlaybackError(null);
     setIsBuffering(false);
-  }, [currentSrc]);
+  }, [src]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -126,63 +116,58 @@ const VideoPlayer = ({
       }
     };
 
-    if (Hls.isSupported() && currentSrc.includes('.m3u8')) {
-      // HLS streaming - longer timeouts to avoid manifestLoadTimeOut on slow CDNs
+    if (Hls.isSupported() && src.includes('.m3u8')) {
+      // HLS streaming - plays in chunks automatically
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120,
-        maxBufferSize: 80 * 1000 * 1000,
-        maxBufferHole: 0.5,
+        // Buffer more to reduce "Buffering..." pauses
+        maxBufferLength: 60, // Buffer up to 60 seconds ahead
+        maxMaxBufferLength: 120, // Allow up to 2 minutes
+        maxBufferSize: 80 * 1000 * 1000, // 80MB max buffer
+        maxBufferHole: 0.5, // Max buffer hole in seconds
         highBufferWatchdogPeriod: 2,
         nudgeOffset: 0.1,
-        nudgeMaxRetry: 5,
-        fragLoadingTimeOut: 45,
-        manifestLoadingTimeOut: 45,
-        levelLoadingTimeOut: 45,
+        nudgeMaxRetry: 5, // More retries for unstable networks
+        fragLoadingTimeOut: 30, // Longer timeout for slow connections
+        manifestLoadingTimeOut: 15,
+        levelLoadingTimeOut: 15,
       });
       hlsRef.current = hls;
-      hls.loadSource(currentSrc);
+      hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsLoading(false);
       });
-
+      
+      // Apply startTime when video is ready
       const handleLevelLoaded = () => {
         applyStartTimeOnce();
       };
-
+      
       const handleCanPlay = () => {
         applyStartTimeOnce();
         if (autoPlay) {
           video.play().catch(() => {});
         }
       };
-
+      
       hls.on(Hls.Events.LEVEL_LOADED, handleLevelLoaded);
       video.addEventListener('canplay', handleCanPlay, { once: true });
-
+      
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
           console.error('HLS fatal error:', data);
-          const msg = data.details === 'manifestLoadTimeOut' || data.details === 'levelLoadingTimeOut'
-            ? 'Video took too long to load. Try again or check your connection.'
-            : data.details === 'manifestLoadError' || data.type === 'networkError'
-              ? 'Could not load video. Try again.'
-              : null;
-          setPlaybackError(msg || 'Playback error');
-          setIsLoading(false);
         }
       });
-
+      
       return () => {
         hls.off(Hls.Events.LEVEL_LOADED, handleLevelLoaded);
         video.removeEventListener('canplay', handleCanPlay);
       };
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari native HLS support
-      video.src = currentSrc;
+      video.src = src;
       const handleLoaded = () => {
         setIsLoading(false);
         applyStartTimeOnce();
@@ -202,7 +187,7 @@ const VideoPlayer = ({
       };
     } else {
       // Validate video URL before attempting to load
-      if (!currentSrc || currentSrc.trim() === '') {
+      if (!src || src.trim() === '') {
         setPlaybackError('No video URL provided. Please check the video source.');
         setIsLoading(false);
         return;
@@ -210,11 +195,11 @@ const VideoPlayer = ({
 
       // Check if URL is valid
       try {
-        new URL(currentSrc);
+        new URL(src);
       } catch (e) {
         // If not a valid URL, it might be a relative path - that's okay
-        if (!currentSrc.startsWith('/') && !currentSrc.startsWith('./')) {
-          setPlaybackError(`Invalid video URL. Please check the video source.`);
+        if (!src.startsWith('/') && !src.startsWith('./')) {
+          setPlaybackError(`Invalid video URL: ${src}. Please check the video source.`);
           setIsLoading(false);
           return;
         }
@@ -222,7 +207,7 @@ const VideoPlayer = ({
 
       // Direct video source (MP4, WebM, MKV, AVI, MOV, etc.)
       // Configure for chunked streaming using HTTP range requests
-      video.src = currentSrc;
+      video.src = src;
       
       // Preload more data to reduce buffering during playback (browser will use range requests)
       video.preload = 'auto';
@@ -273,14 +258,14 @@ const VideoPlayer = ({
           const error = video.error;
           if (error) {
             // Detect file format from source URL
-            const isMKV = currentSrc.toLowerCase().includes('.mkv');
-            const isMP4 = currentSrc.toLowerCase().includes('.mp4');
-            const isWebM = currentSrc.toLowerCase().includes('.webm');
-            const isAVI = currentSrc.toLowerCase().includes('.avi');
-            const isMOV = currentSrc.toLowerCase().includes('.mov');
+            const isMKV = src.toLowerCase().includes('.mkv');
+            const isMP4 = src.toLowerCase().includes('.mp4');
+            const isWebM = src.toLowerCase().includes('.webm');
+            const isAVI = src.toLowerCase().includes('.avi');
+            const isMOV = src.toLowerCase().includes('.mov');
             
             // Get file extension for better error messages
-            const urlParts = currentSrc.split('.');
+            const urlParts = src.split('.');
             const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].toLowerCase() : 'unknown';
             
             let errorMessage = 'Video playback error';
@@ -293,7 +278,7 @@ const VideoPlayer = ({
                 break;
               case error.MEDIA_ERR_NETWORK:
                 errorMessage = 'Network error while loading video';
-                detailedMessage = `Unable to load video. Please check your internet connection and verify the video URL is accessible.`;
+                detailedMessage = `Unable to load video from: ${src}. Please check your internet connection and verify the video URL is accessible.`;
                 break;
               case error.MEDIA_ERR_DECODE:
                 if (isMKV) {
@@ -316,18 +301,18 @@ const VideoPlayer = ({
                   detailedMessage = `${extension.toUpperCase()} format is not supported by this browser. Please use MP4 format (H.264 codec) for maximum compatibility.`;
                 } else {
                   errorMessage = 'Video format not supported';
-                  detailedMessage = `This video format (${extension.toUpperCase()}) is not supported by your browser. The video may be corrupted or the codec is not supported. Please use MP4 format (H.264 codec) for maximum compatibility.`;
+                  detailedMessage = `This video format (${extension.toUpperCase()}) is not supported by your browser. The video may be corrupted, inaccessible, or the codec is not supported. Please use MP4 format (H.264 codec) for maximum compatibility. Video URL: ${src}`;
                 }
                 break;
               default:
                 errorMessage = 'Video playback error';
-                detailedMessage = `An error occurred while playing the video (Error code: ${error.code}). If the problem persists, try again or refresh the page.`;
+                detailedMessage = `An error occurred while playing the video (Error code: ${error.code}). Please verify the video URL is correct and accessible: ${src}. If the problem persists, try refreshing the page or contact support.`;
             }
             
             console.error('Video error details:', {
               errorCode: error.code,
               errorMessage,
-              videoSrc: currentSrc,
+              videoSrc: src,
               videoError: error,
               canPlayType: {
                 'video/mp4': video.canPlayType('video/mp4'),
@@ -703,16 +688,14 @@ const VideoPlayer = ({
                   <button
                     onClick={() => {
                       setPlaybackError(null);
-                      setIsLoading(true);
-                      if (fallbackSrc && currentSrc === src) {
-                        setCurrentSrc(fallbackSrc);
-                      } else {
-                        setCurrentSrc(src);
+                      const video = videoRef.current;
+                      if (video) {
+                        video.load();
                       }
                     }}
                     className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
                   >
-                    {fallbackSrc && currentSrc === src ? 'Try via server' : 'Try Again'}
+                    Try Again
                   </button>
                   <button
                     onClick={() => setPlaybackError(null)}
