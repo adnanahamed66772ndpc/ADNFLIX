@@ -30,6 +30,9 @@ function isUrlAllowedForProxy(rawUrl) {
   }
 }
 
+// Timeout for proxy request to upstream (manifest or segment). HLS client waits up to 60s.
+const PROXY_UPSTREAM_TIMEOUT_MS = 55000;
+
 // Proxy external video through our API to avoid CORS (browser requests our origin, we stream from external URL).
 async function streamProxy(req, res, next) {
   try {
@@ -37,57 +40,78 @@ async function streamProxy(req, res, next) {
     if (!rawUrl || typeof rawUrl !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid url query parameter' });
     }
-    const decodedUrl = decodeURIComponent(rawUrl.trim());
+    let decodedUrl = decodeURIComponent(rawUrl.trim());
     if (!isUrlAllowedForProxy(decodedUrl)) {
       return res.status(403).json({ error: 'Video URL is not allowed for proxy' });
     }
 
     let range = req.headers.range;
-    const options = new URL(decodedUrl);
-    const client = options.protocol === 'https:' ? https : http;
-    // Request a larger first chunk when client asks for "bytes=0-" so remote URL streams buffer faster
     const firstChunkSize = PROXY_STREAM_BUFFER_SIZE;
     if (range && range.trim().toLowerCase() === 'bytes=0-') {
       range = `bytes=0-${firstChunkSize - 1}`;
     }
-    // Forward only Range and Accept so upstream gets clean requests
     const requestHeaders = {
       'Accept': req.headers.accept || 'video/*,*/*;q=0.9',
       'User-Agent': req.headers['user-agent'] || 'ADNFLIX-StreamProxy/1.0',
     };
     if (range) requestHeaders.range = range;
 
-    const proxyReq = client.request(decodedUrl, { headers: requestHeaders }, (proxyRes) => {
-      const status = proxyRes.statusCode;
-      if (status !== 200 && status !== 206) {
-        res.writeHead(status, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ error: 'Upstream video unavailable', status }));
-      }
-      const contentType = proxyRes.headers['content-type'] || 'video/mp4';
-      const headers = {
-        'Content-Type': contentType,
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=3600',
-        'Access-Control-Allow-Origin': '*',
-      };
-      if (proxyRes.headers['content-length']) headers['Content-Length'] = proxyRes.headers['content-length'];
-      if (proxyRes.headers['content-range']) headers['Content-Range'] = proxyRes.headers['content-range'];
-      res.writeHead(status, headers);
-      // Use a buffering stream so remote URL data is fed to the client smoothly (buffer-free playback)
-      const bufferStream = new PassThrough({ highWaterMark: PROXY_STREAM_BUFFER_SIZE });
-      proxyRes.pipe(bufferStream).pipe(res);
-      req.on('abort', () => {
-        bufferStream.destroy();
-        proxyRes.destroy();
-      });
-    });
+    let redirectCount = 0;
+    const maxRedirects = 5;
 
-    proxyReq.on('error', (err) => {
-      console.error('[video proxy]', err.message);
-      if (!res.headersSent) res.status(502).json({ error: 'Failed to fetch video' });
-    });
-    req.on('abort', () => proxyReq.destroy());
-    proxyReq.end();
+    function doRequest(url) {
+      const options = new URL(url);
+      const client = options.protocol === 'https:' ? https : http;
+      const proxyReq = client.request(url, { headers: requestHeaders }, (proxyRes) => {
+        const status = proxyRes.statusCode;
+        if (status === 301 || status === 302 || status === 307 || status === 308) {
+          const location = proxyRes.headers.location;
+          if (redirectCount >= maxRedirects || !location) {
+            res.writeHead(status, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Too many redirects or missing Location' }));
+          }
+          redirectCount++;
+          const nextUrl = new URL(location, url).href;
+          if (!isUrlAllowedForProxy(nextUrl)) {
+            return res.status(403).json({ error: 'Redirect target not allowed for proxy' });
+          }
+          return doRequest(nextUrl);
+        }
+        if (status !== 200 && status !== 206) {
+          res.writeHead(status, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'Upstream video unavailable', status }));
+        }
+        const contentType = proxyRes.headers['content-type'] || 'video/mp4';
+        const headers = {
+          'Content-Type': contentType,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+        };
+        if (proxyRes.headers['content-length']) headers['Content-Length'] = proxyRes.headers['content-length'];
+        if (proxyRes.headers['content-range']) headers['Content-Range'] = proxyRes.headers['content-range'];
+        res.writeHead(status, headers);
+        const bufferStream = new PassThrough({ highWaterMark: PROXY_STREAM_BUFFER_SIZE });
+        proxyRes.pipe(bufferStream).pipe(res);
+        req.on('abort', () => {
+          bufferStream.destroy();
+          proxyRes.destroy();
+        });
+      });
+
+      proxyReq.on('error', (err) => {
+        console.error('[video proxy]', err.message);
+        if (!res.headersSent) res.status(502).json({ error: 'Failed to fetch video' });
+      });
+      proxyReq.setTimeout(PROXY_UPSTREAM_TIMEOUT_MS, () => {
+        proxyReq.destroy();
+        if (!res.headersSent) res.status(504).json({ error: 'Upstream timeout' });
+      });
+      req.on('abort', () => proxyReq.destroy());
+      proxyReq.end();
+    }
+
+    doRequest(decodedUrl);
   } catch (error) {
     next(error);
   }

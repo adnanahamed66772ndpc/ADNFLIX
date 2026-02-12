@@ -122,16 +122,19 @@ const VideoPlayer = ({
         enableWorker: true,
         lowLatencyMode: false,
         // Buffer more to reduce "Buffering..." pauses
-        maxBufferLength: 60, // Buffer up to 60 seconds ahead
-        maxMaxBufferLength: 120, // Allow up to 2 minutes
-        maxBufferSize: 80 * 1000 * 1000, // 80MB max buffer
-        maxBufferHole: 0.5, // Max buffer hole in seconds
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120,
+        maxBufferSize: 80 * 1000 * 1000,
+        maxBufferHole: 0.5,
         highBufferWatchdogPeriod: 2,
         nudgeOffset: 0.1,
-        nudgeMaxRetry: 5, // More retries for unstable networks
-        fragLoadingTimeOut: 30, // Longer timeout for slow connections
-        manifestLoadingTimeOut: 15,
-        levelLoadingTimeOut: 15,
+        nudgeMaxRetry: 5,
+        fragLoadingTimeOut: 30,
+        // Longer timeouts when using proxy (manifest goes through backend)
+        manifestLoadingTimeOut: 60000, // 60s for slow upstream/proxy
+        manifestLoadingMaxRetry: 4,
+        levelLoadingTimeOut: 60000,
+        levelLoadingMaxRetry: 4,
       });
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -158,6 +161,11 @@ const VideoPlayer = ({
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
           console.error('HLS fatal error:', data);
+          const isManifestTimeout = data.details === 'manifestLoadTimeOut' || data.details === 'manifestLoadError';
+          const msg = isManifestTimeout
+            ? 'Stream took too long to load. Check your connection and try again.'
+            : data.details || 'Playback error';
+          setPlaybackError(msg);
         }
       });
       
