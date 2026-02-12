@@ -98,12 +98,21 @@ You should see `adnflix-db`, `adnflix-backend`, and `adnflix-web` running.
 
 ## Step 7. Install Nginx and proxy
 
+Use the sample config from the repo (recommended) or paste the snippet below.
+
+**Option A – copy from repo (after cloning):**
+```bash
+sudo apt install -y nginx
+sudo cp /opt/ADNFLIX/deploy/nginx-adnflix.conf /etc/nginx/sites-available/adnflix
+sudo sed -i 's/YOUR_DOMAIN/coliningram.site/g' /etc/nginx/sites-available/adnflix   # or your domain
+```
+
+**Option B – create manually:**
 ```bash
 sudo apt install -y nginx
 sudo nano /etc/nginx/sites-available/adnflix
 ```
-
-Paste this (change `yourdomain.com` to your domain or use `_` for IP-only):
+Paste this (change `coliningram.site` to your domain or use `_` for IP-only):
 
 ```nginx
 server {
@@ -135,7 +144,7 @@ server {
 }
 ```
 
-Save and exit, then enable and reload:
+Then enable and reload:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/adnflix /etc/nginx/sites-enabled/
@@ -193,5 +202,14 @@ The workflow pulls latest code, rebuilds and starts the Docker containers (db, b
 - **deploy.sh: `sh\r: No such file or directory`** — Run `sed -i 's/\r$//' deploy.sh` then `./deploy.sh` again.
 - **MySQL not ready** — `docker compose logs db`. Clean start: `docker compose down -v` then `./deploy.sh`.
 - **Backend crashes** — `docker compose logs backend`; check DB credentials in `.env`.
-- **502 Bad Gateway** — Ensure Nginx has `proxy_pass http://127.0.0.1:3000` for `/api` and `/health`, and run `docker compose ps` to confirm `adnflix-backend` is up.
+- **502 Bad Gateway** — Nginx is up but the **backend container is not responding** on port 3000.
+  1. **On the VPS**, run:
+     ```bash
+     cd /opt/ADNFLIX
+     docker compose ps -a
+     docker compose logs backend --tail 100
+     ```
+  2. If `adnflix-backend` is **Exited** or **Restarting**, the app is crashing (often migrations, DB connection, or missing env). Fix the error shown in the logs (e.g. wrong `ADNFLIX_MYSQL_PASSWORD` in `.env`, or a failed migration).
+  3. If the backend is **Running** but you still get 502, check Nginx config: `/api` and `/health` must proxy to `http://127.0.0.1:3000`. Use the sample in `deploy/nginx-adnflix.conf` (copy to `/etc/nginx/sites-available/adnflix`, fix `server_name`, enable, then `sudo nginx -t && sudo systemctl reload nginx`).
+  4. Restart backend after fixing: `docker compose up -d backend`.
 - **CORS errors** — Add your site URL (e.g. `https://yourdomain.com`) to `CORS_ORIGINS` in `deploy.sh`, then run `./deploy.sh` again.
