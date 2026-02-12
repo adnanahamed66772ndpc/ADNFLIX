@@ -34,18 +34,27 @@ function isUrlAllowedForProxy(rawUrl) {
 const PROXY_UPSTREAM_TIMEOUT_MS = 55000;
 
 // Build proxy base URL for rewriting HLS segment URLs (e.g. https://coliningram.site/api/videos/stream?url=)
+// Use X-Forwarded-* when behind reverse proxy so segment URLs use the public origin.
 function getStreamProxyBaseUrl(req) {
-  const protocol = req.get('x-forwarded-proto') || (req.connection?.encrypted ? 'https' : 'http');
-  const host = req.get('host') || 'localhost';
+  const protocol = req.get('x-forwarded-proto') || (req.socket?.encrypted ? 'https' : 'http');
+  const host = req.get('x-forwarded-host') || req.get('host') || 'localhost';
   return `${protocol}://${host}/api/videos/stream?url=`;
 }
 
-// Fetch full response body (for HLS manifest rewriting)
-function fetchUrlAsBuffer(url, options = {}) {
+// Fetch full response body (for HLS manifest rewriting). Follows one redirect.
+function fetchUrlAsBuffer(url, options = {}, redirectCount = 0) {
+  const maxRedirects = 3;
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const client = u.protocol === 'https:' ? https : http;
     const req = client.request(url, { headers: options.headers || {} }, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+        const location = res.headers.location;
+        if (redirectCount < maxRedirects && location && isUrlAllowedForProxy(new URL(location, url).href)) {
+          res.destroy();
+          return resolve(fetchUrlAsBuffer(new URL(location, url).href, options, redirectCount + 1));
+        }
+      }
       if (res.statusCode !== 200 && res.statusCode !== 206) {
         reject(new Error(`HTTP ${res.statusCode}`));
         return;

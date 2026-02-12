@@ -121,7 +121,6 @@ const VideoPlayer = ({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        // Buffer more to reduce "Buffering..." pauses
         maxBufferLength: 60,
         maxMaxBufferLength: 120,
         maxBufferSize: 80 * 1000 * 1000,
@@ -129,9 +128,10 @@ const VideoPlayer = ({
         highBufferWatchdogPeriod: 2,
         nudgeOffset: 0.1,
         nudgeMaxRetry: 5,
-        fragLoadingTimeOut: 30,
-        // Longer timeouts when using proxy (manifest goes through backend)
-        manifestLoadingTimeOut: 60000, // 60s for slow upstream/proxy
+        // Longer timeouts for proxy/remote HLS (segments go through backend)
+        fragLoadingTimeOut: 60,
+        fragLoadingMaxRetry: 6,
+        manifestLoadingTimeOut: 60000,
         manifestLoadingMaxRetry: 4,
         levelLoadingTimeOut: 60000,
         levelLoadingMaxRetry: 4,
@@ -162,9 +162,10 @@ const VideoPlayer = ({
         if (data.fatal) {
           console.error('HLS fatal error:', data);
           const isManifestTimeout = data.details === 'manifestLoadTimeOut' || data.details === 'manifestLoadError';
-          const msg = isManifestTimeout
-            ? 'Stream took too long to load. Check your connection and try again.'
-            : data.details || 'Playback error';
+          const isFragTimeout = data.details === 'fragLoadTimeOut' || data.details === 'fragLoadError';
+          let msg = data.details || 'Playback error';
+          if (isManifestTimeout) msg = 'Stream took too long to load. Check your connection and try again.';
+          else if (isFragTimeout) msg = 'Segment load failed. If using an external stream, ensure the backend proxy is deployed and the stream URL is reachable.';
           setPlaybackError(msg);
         }
       });
