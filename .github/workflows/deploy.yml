@@ -57,13 +57,22 @@ jobs:
             done
             echo "Waiting for backend health (up to 2 min)..."
             i=0
+            last_code=""
             while [ $i -lt 40 ]; do
-              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/health 2>/dev/null || echo "000")
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/health 2>/dev/null) || code="000"
+              last_code="$code"
               if [ "$code" = "200" ]; then
                 echo "Backend healthy (200)."
                 break
               fi
-              [ $i -eq 39 ] && { echo "::error::Backend health check failed (no 200 after 2 min). Last code: $code"; exit 1; }
+              if [ $i -eq 39 ]; then
+                echo "::error::Backend health check failed (no 200 after 2 min). Last HTTP code: $last_code"
+                echo "--- Backend container status ---"
+                docker compose ps -a
+                echo "--- Backend container logs (last 120 lines) ---"
+                docker compose logs backend --tail 120
+                exit 1
+              fi
               i=$((i+1))
               sleep 3
             done
