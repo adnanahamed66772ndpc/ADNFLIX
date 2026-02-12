@@ -23,8 +23,18 @@ async function run() {
     const filePath = path.join(migrationsDir, file);
     const sql = fs.readFileSync(filePath, 'utf8');
     console.log('Running:', file);
-    await pool.query(sql);
-    console.log('OK:', file);
+    try {
+      await pool.query(sql);
+      console.log('OK:', file);
+    } catch (err) {
+      const msg = (err.message || '').toLowerCase();
+      // Idempotent: already applied migrations (e.g. re-deploy)
+      if (msg.includes('duplicate column') || msg.includes('duplicate key') || msg.includes('already exists')) {
+        console.log('Skip (already applied):', file);
+      } else {
+        throw err;
+      }
+    }
   }
 
   await pool.end();

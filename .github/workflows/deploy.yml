@@ -60,7 +60,13 @@ jobs:
             while [ $i -le 40 ]; do
               code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/health 2>/dev/null || true)
               if [ "$code" = "200" ]; then echo "Backend returned 200."; break; fi
-              [ $i -eq 40 ] && { echo "::error::Backend health check failed (no 200 after 80s)"; exit 1; }
+              if [ $i -eq 40 ]; then
+                echo "::error::Backend health check failed (no 200 after 80s)"
+                echo "--- Backend container logs (last 80 lines) ---"
+                docker compose --env-file .env logs --tail=80 backend || true
+                echo "--- End backend logs ---"
+                exit 1
+              fi
               sleep 2
               i=$((i + 1))
             done
