@@ -6,6 +6,7 @@
 #   VPS_USER       - SSH user (e.g. root or ubuntu)
 #   SSH_PRIVATE_KEY - Full private key (cat ~/.ssh/id_rsa). Include -----BEGIN/-----END lines. Not the .pub file.
 # Optional: VPS_PORT - SSH port if not 22 (uncomment port in ssh-action)
+# Optional: VPS_APP_DIR - absolute path to repo on VPS (e.g. /opt/ADNFLIX)
 # If job stays "Queued" 1–2 min: GitHub is busy. Cancel and re-run from Actions tab, or wait.
 
 name: Deploy to Production (Docker)
@@ -33,10 +34,25 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: GITHUB_REPOSITORY
           script: |
             set -e
-            cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX not found. Clone repo and run ./deploy.sh once."; exit 1; }
-            if [ ! -f .env ]; then echo "::error::VPS: .env missing. Run ./deploy.sh on the VPS first to create it."; exit 1; fi
+            APP_DIR="${{ secrets.VPS_APP_DIR }}"
+            if [ -z "$APP_DIR" ]; then APP_DIR="/opt/ADNFLIX"; fi
+            if [ ! -d "$APP_DIR" ]; then
+              for d in "/opt/ADNFLIX" "/opt/adnflix" "/home/${{ secrets.VPS_USER }}/ADNFLIX" "/root/ADNFLIX"; do
+                if [ -d "$d/.git" ]; then APP_DIR="$d"; break; fi
+              done
+            fi
+            if [ ! -d "$APP_DIR" ]; then
+              echo "::error::VPS: repo directory not found. Set secret VPS_APP_DIR to your clone path, then re-run."
+              exit 1
+            fi
+            cd "$APP_DIR"
+            if [ ! -f .env ]; then
+              echo "::error::VPS: .env missing in $APP_DIR. Run ./deploy.sh once on the VPS to create it."
+              exit 1
+            fi
             PREV=$(git rev-parse HEAD 2>/dev/null) || PREV=""
             git fetch origin main
             git reset --hard origin/main
