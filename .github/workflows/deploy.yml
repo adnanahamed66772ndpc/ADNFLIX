@@ -35,8 +35,18 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
+            # Non-interactive SSH often has a minimal PATH; Docker is usually under /usr/bin
+            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
             cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX not found. Clone repo and run ./deploy.sh once."; exit 1; }
             if [ ! -f .env ]; then echo "::error::VPS: .env missing. Run ./deploy.sh on the VPS first to create it."; exit 1; fi
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "::error::VPS: docker not found. On the server, install Docker Engine and the Compose plugin (see repo DEPLOY-VPS.md Step 2), then ssh in and run: docker --version && docker compose version"
+              exit 1
+            fi
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "::error::VPS: docker compose (v2 plugin) not found. Install package docker-compose-plugin alongside docker-ce, then verify: docker compose version"
+              exit 1
+            fi
             PREV=$(git rev-parse HEAD 2>/dev/null) || PREV=""
             git fetch origin main
             git reset --hard origin/main

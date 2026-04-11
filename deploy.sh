@@ -6,6 +6,15 @@
 
 set -e
 
+if ! command -v docker >/dev/null 2>&1; then
+  echo "ERROR: docker not found. Install Docker Engine + Compose plugin first (see DEPLOY-VPS.md Step 2)."
+  exit 1
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  echo "ERROR: docker compose (v2) not found. Install docker-compose-plugin (e.g. apt install docker-compose-plugin)."
+  exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # CONFIG - Edit these for your production
 # -----------------------------------------------------------------------------
