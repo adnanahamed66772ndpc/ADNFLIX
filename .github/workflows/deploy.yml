@@ -35,16 +35,26 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            # Non-interactive SSH often has a minimal PATH; Docker is usually under /usr/bin
-            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+            # Non-interactive SSH uses a minimal PATH; include standard locations + snap
+            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:${PATH:-}"
+            DOCKER_CMD=""
+            if command -v docker >/dev/null 2>&1; then
+              DOCKER_CMD="$(command -v docker)"
+            elif [ -x /usr/bin/docker ]; then
+              DOCKER_CMD=/usr/bin/docker
+            elif [ -x /usr/local/bin/docker ]; then
+              DOCKER_CMD=/usr/local/bin/docker
+            elif [ -x /snap/bin/docker ]; then
+              DOCKER_CMD=/snap/bin/docker
+            fi
             cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX not found. Clone repo and run ./deploy.sh once."; exit 1; }
             if [ ! -f .env ]; then echo "::error::VPS: .env missing. Run ./deploy.sh on the VPS first to create it."; exit 1; fi
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "::error::VPS: docker not found. On the server, install Docker Engine and the Compose plugin (see repo DEPLOY-VPS.md Step 2), then ssh in and run: docker --version && docker compose version"
+            if [ -z "$DOCKER_CMD" ]; then
+              echo "::error::VPS: docker not found (checked PATH, /usr/bin/docker, /snap/bin/docker). Install Docker Engine + docker-compose-plugin (DEPLOY-VPS.md Step 2). If Docker works when you SSH manually, fix PATH for non-interactive SSH or use root as VPS_USER."
               exit 1
             fi
-            if ! docker compose version >/dev/null 2>&1; then
-              echo "::error::VPS: docker compose (v2 plugin) not found. Install package docker-compose-plugin alongside docker-ce, then verify: docker compose version"
+            if ! "$DOCKER_CMD" compose version >/dev/null 2>&1; then
+              echo "::error::VPS: docker compose (v2 plugin) not found. Install docker-compose-plugin (apt: docker-compose-plugin). Verify: $DOCKER_CMD compose version"
               exit 1
             fi
             PREV=$(git rev-parse HEAD 2>/dev/null) || PREV=""
@@ -60,7 +70,7 @@ jobs:
             export DOCKER_BUILDKIT=1
             # Retry build up to 3 times (Docker Hub can return 502 Bad Gateway)
             for attempt in 1 2 3; do
-              if docker compose --env-file .env up -d $NEED_BUILD; then break; fi
+              if "$DOCKER_CMD" compose --env-file .env up -d $NEED_BUILD; then break; fi
               [ $attempt -eq 3 ] && { echo "::error::Docker build/up failed after 3 attempts"; exit 1; }
               echo "Attempt $attempt failed, retrying in 30s..."
               sleep 30
