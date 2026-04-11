@@ -45,6 +45,11 @@ apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin do
 
 systemctl enable --now docker 2>/dev/null || true
 
+# When run as: sudo bash this-script, let the calling user use the socket after next login
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+  usermod -aG docker "$SUDO_USER" 2>/dev/null || true
+fi
+
 echo "Installed:"
 docker --version
 docker compose version
