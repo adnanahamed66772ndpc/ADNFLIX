@@ -1,13 +1,24 @@
-# Deploy ADNFLIX to production VPS with Docker on push to main
+# Push to main -> SSH to VPS: clone repo if needed, Docker stack, Nginx + firewall, optional HTTPS.
 #
-# One-time VPS setup: clone repo to /opt/ADNFLIX, run ./deploy.sh to create .env and start containers.
-# If Docker is missing but the SSH user has passwordless sudo, the job runs scripts/vps-install-docker.sh automatically.
-# Then add these GitHub Actions secrets (Settings → Secrets and variables → Actions):
-#   VPS_HOST        - VPS IP or hostname (e.g. 1.2.3.4 or api.yourdomain.com)
-#   VPS_USER       - SSH user (e.g. root or ubuntu)
-#   SSH_PRIVATE_KEY - Full private key (cat ~/.ssh/id_rsa). Include -----BEGIN/-----END lines. Not the .pub file.
-# Optional: VPS_PORT - SSH port if not 22 (uncomment port in ssh-action)
-# If job stays "Queued" 1–2 min: GitHub is busy. Cancel and re-run from Actions tab, or wait.
+# Required GitHub Actions secrets (Settings -> Secrets and variables -> Actions):
+#   VPS_HOST          VPS IP or hostname
+#   VPS_USER          SSH user (passwordless sudo recommended: ubuntu on many clouds)
+#   SSH_PRIVATE_KEY   Full private key (with BEGIN/END lines)
+#
+# Strongly recommended:
+#   ADNFLIX_DOMAIN    Your site hostname (e.g. coliningram.site) for Nginx + first .env
+#
+# Optional (first deploy without manual .env on server — set strong values):
+#   ADNFLIX_JWT_SECRET
+#   ADNFLIX_SESSION_SECRET
+#   ADNFLIX_MYSQL_PASSWORD
+#   ADNFLIX_MYSQL_ROOT_PASSWORD
+#   ADNFLIX_CORS_ORIGINS   (comma-separated; defaults include http/https for ADNFLIX_DOMAIN in deploy.sh)
+#
+# Optional:
+#   GH_DEPLOY_PAT     GitHub PAT for cloning a private repo (x-access-token)
+#   CERTBOT_EMAIL     If set, obtains Let's Encrypt cert (DNS must point to this VPS first)
+#   VPS_PORT          Uncomment "port:" below if SSH is not 22
 
 name: Deploy to Production (Docker)
 
@@ -34,7 +45,8 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 30m
+          # port: ${{ secrets.VPS_PORT }}
+          command_timeout: 45m
           script: |
             set -e
             export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:${HOME:-}/.docker/bin:${PATH:-}"
@@ -61,8 +73,21 @@ jobs:
                 return 1
               fi
             }
-            cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX not found. Clone repo and run ./deploy.sh once."; exit 1; }
-            if [ ! -f .env ]; then echo "::error::VPS: .env missing. Run ./deploy.sh on the VPS first to create it."; exit 1; fi
+            GH_PAT="${{ secrets.GH_DEPLOY_PAT }}"
+            if [ -n "$GH_PAT" ]; then
+              REPO="https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git"
+            else
+              REPO="https://github.com/${{ github.repository }}.git"
+            fi
+            if [ ! -d /opt/ADNFLIX/.git ]; then
+              echo "Cloning repo to /opt/ADNFLIX..."
+              if [ ! -w /opt ] 2>/dev/null; then
+                sudo -n mkdir -p /opt
+                sudo -n chown "$(id -u):$(id -g)" /opt
+              fi
+              git clone "$REPO" /opt/ADNFLIX
+            fi
+            cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX missing after clone"; exit 1; }
             PREV=$(git rev-parse HEAD 2>/dev/null) || PREV=""
             git fetch origin main
             git reset --hard origin/main
@@ -73,32 +98,60 @@ jobs:
               resolve_docker
             fi
             if [ -z "$DOCKER_CMD" ]; then
-              echo "::error::VPS: docker not found and auto-install skipped (need passwordless sudo, or run manually: cd /opt/ADNFLIX && sudo bash scripts/vps-install-docker.sh). See DEPLOY-VPS.md Step 2."
+              echo "::error::VPS: docker not found. Install Docker or enable passwordless sudo for auto-install (scripts/vps-install-docker.sh)."
               exit 1
             fi
             if ! run_compose version >/dev/null 2>&1; then
-              echo "::error::VPS: docker compose (v2 plugin) missing or not usable. Install docker-compose-plugin. Verify on server: docker compose version"
+              echo "::error::VPS: docker compose not usable. Install docker-compose-plugin."
               exit 1
             fi
-            NEED_BUILD="--build"
-            if [ -n "$PREV" ]; then
-              if ! git diff --name-only "$PREV" HEAD -- backend/ frontend/ | grep -q . ; then
-                NEED_BUILD=""
-                echo "No backend/frontend changes, skipping image rebuild."
-              fi
+            FRESH_BOOT=0
+            if [ ! -f .env ]; then
+              echo "No .env yet; bootstrapping from GitHub-provided env (deploy.sh)..."
+              [ -n "${{ secrets.ADNFLIX_DOMAIN }}" ] && export ADNFLIX_DOMAIN="${{ secrets.ADNFLIX_DOMAIN }}"
+              [ -n "${{ secrets.ADNFLIX_JWT_SECRET }}" ] && export ADNFLIX_JWT_SECRET="${{ secrets.ADNFLIX_JWT_SECRET }}"
+              [ -n "${{ secrets.ADNFLIX_SESSION_SECRET }}" ] && export ADNFLIX_SESSION_SECRET="${{ secrets.ADNFLIX_SESSION_SECRET }}"
+              [ -n "${{ secrets.ADNFLIX_MYSQL_PASSWORD }}" ] && export ADNFLIX_MYSQL_PASSWORD="${{ secrets.ADNFLIX_MYSQL_PASSWORD }}"
+              [ -n "${{ secrets.ADNFLIX_MYSQL_ROOT_PASSWORD }}" ] && export ADNFLIX_MYSQL_ROOT_PASSWORD="${{ secrets.ADNFLIX_MYSQL_ROOT_PASSWORD }}"
+              [ -n "${{ secrets.ADNFLIX_CORS_ORIGINS }}" ] && export ADNFLIX_CORS_ORIGINS="${{ secrets.ADNFLIX_CORS_ORIGINS }}"
+              sh deploy.sh
+              FRESH_BOOT=1
             fi
-            export DOCKER_BUILDKIT=1
-            # Retry build up to 3 times (Docker Hub can return 502 Bad Gateway)
-            for attempt in 1 2 3; do
-              if run_compose --env-file .env up -d $NEED_BUILD; then break; fi
-              [ $attempt -eq 3 ] && { echo "::error::Docker build/up failed after 3 attempts"; exit 1; }
-              echo "Attempt $attempt failed, retrying in 30s..."
-              sleep 30
-            done
+            if [ "$FRESH_BOOT" = "0" ]; then
+              NEED_BUILD="--build"
+              if [ -n "$PREV" ]; then
+                if ! git diff --name-only "$PREV" HEAD -- backend/ frontend/ | grep -q . ; then
+                  NEED_BUILD=""
+                  echo "No backend/frontend changes, skipping image rebuild."
+                fi
+              fi
+              export DOCKER_BUILDKIT=1
+              for attempt in 1 2 3; do
+                if run_compose --env-file .env up -d $NEED_BUILD; then break; fi
+                [ $attempt -eq 3 ] && { echo "::error::Docker build/up failed after 3 attempts"; exit 1; }
+                echo "Attempt $attempt failed, retrying in 30s..."
+                sleep 30
+              done
+            else
+              echo "Initial stack started by deploy.sh."
+            fi
             echo "Waiting for backend health..."
             for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
               curl -sf http://127.0.0.1:3000/health && break
               [ $i -eq 12 ] && { echo "::error::Backend health check failed"; exit 1; }
               sleep 2
             done
+            D="${{ secrets.ADNFLIX_DOMAIN }}"
+            if [ -z "$D" ]; then
+              D=$(grep -E '^ADNFLIX_DOMAIN=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r' || true)
+            fi
+            if [ -n "$D" ] && sudo -n true 2>/dev/null && [ -f scripts/vps-expose-site.sh ]; then
+              CE="${{ secrets.CERTBOT_EMAIL }}"
+              echo "Applying Nginx + firewall for $D ..."
+              sudo -n env CERTBOT_EMAIL="${CE:-}" bash scripts/vps-expose-site.sh "$D"
+            elif [ -z "$D" ]; then
+              echo "Skip public expose: set ADNFLIX_DOMAIN secret or ADNFLIX_DOMAIN in .env for auto Nginx/UFW."
+            else
+              echo "Skip Nginx/UFW (no passwordless sudo or missing scripts/vps-expose-site.sh)."
+            fi
             echo "Deploy OK."

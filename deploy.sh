@@ -6,11 +6,22 @@
 
 set -e
 
+# Use sudo for compose when the user is not yet in the docker group (e.g. right after CI install).
+run_dc() {
+  if docker info >/dev/null 2>&1; then
+    docker compose "$@"
+  elif sudo -n docker info >/dev/null 2>&1; then
+    sudo -n docker compose "$@"
+  else
+    docker compose "$@"
+  fi
+}
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker not found. Install Docker Engine + Compose plugin first (see DEPLOY-VPS.md Step 2)."
   exit 1
 fi
-if ! docker compose version >/dev/null 2>&1; then
+if ! run_dc version >/dev/null 2>&1; then
   echo "ERROR: docker compose (v2) not found. Install docker-compose-plugin (e.g. apt install docker-compose-plugin)."
   exit 1
 fi
@@ -60,7 +71,7 @@ mkdir -p storage/videos
 
 # Build and start
 echo ">>> Building and starting containers..."
-docker compose --env-file .env up -d --build
+run_dc --env-file .env up -d --build
 
 echo ""
 echo ">>> Deploy finished."
