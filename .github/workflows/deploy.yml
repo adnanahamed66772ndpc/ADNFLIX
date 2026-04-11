@@ -50,7 +50,7 @@ jobs:
             cd /opt/ADNFLIX || { echo "::error::VPS: /opt/ADNFLIX not found. Clone repo and run ./deploy.sh once."; exit 1; }
             if [ ! -f .env ]; then echo "::error::VPS: .env missing. Run ./deploy.sh on the VPS first to create it."; exit 1; fi
             if [ -z "$DOCKER_CMD" ]; then
-              echo "::error::VPS: docker not found. One-time on server: cd /opt/ADNFLIX && git pull && sudo bash scripts/vps-install-docker.sh — or DEPLOY-VPS.md Step 2. GitHub VPS_USER must match a user that can run docker (same as interactive ssh)."
+              echo "::error::VPS: docker not found. One-time on server: cd /opt/ADNFLIX && git pull && sudo bash scripts/vps-install-docker.sh. Alternatively DEPLOY-VPS.md Step 2. GitHub VPS_USER must match a user that can run docker (same as interactive ssh)."
               exit 1
             fi
             if ! "$DOCKER_CMD" compose version >/dev/null 2>&1; then
